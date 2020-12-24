@@ -1,0 +1,26 @@
+{
+  "name": "underscript-app",
+  "version": "1.0.0",
+  "description": "Dedicated application for loading UnderScript.",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "feildmaster <underscript@feildmaster.com> (https://feildmaster.com/)",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^11.1.1",
+    "electron-builder": "^22.9.1"
+  },
+  "dependencies": {
+    "needle": "^2.5.2"
+  },
+  "build": {
+    "appId": "com.feildmaster.underscript.app"
+  }
+}
