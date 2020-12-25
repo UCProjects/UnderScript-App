@@ -47,8 +47,8 @@ jobs:
       matrix:
         os:
           - windows-latest
-          #- ubuntu-latest
-          #- macos-latest
+          - ubuntu-latest
+          - macos-latest
     needs: [check, release]
     steps: 
       - name: Checkout repository
@@ -61,17 +61,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: Install dependencies
         run: npm install
-      - name: Build App
+      - name: Build and Publish
         run: npm run dist
-      - name: Upload Asset Windows
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: ./dist/UnderScript Setup ${{ needs.check.outputs.version }}.exe
-          asset_name: UnderScript.${{ needs.check.outputs.version }}.exe
-          asset_content_type: application/octet-stream
-      #- name: Upload Asset Mac
-      #- name: Upload Asset Linux
