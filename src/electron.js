@@ -25,7 +25,7 @@ function createWindow(dir = '') {
     });
   });
   
-  win.loadURL('https://undercards.net');
+  win.loadURL('https://undercards.net/SignIn');
   win.setMenu(null);
   win.maximize();
 
