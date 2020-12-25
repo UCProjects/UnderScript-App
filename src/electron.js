@@ -35,6 +35,8 @@ function createWindow(dir = '') {
       win.webContents.openDevTools();
     } else if (input.key === 'F11') {
       win.setFullScreen(!win.isFullScreen());
+    } else if (input.key === 'F5' || input.control && input.key.toLowerCase() === 'r') {
+      win.reload();
     }
   });
 
