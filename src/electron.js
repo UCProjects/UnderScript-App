@@ -1,5 +1,6 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
+const keytar = require('keytar');
 
 function createWindow(dir = '') {
   const win = new BrowserWindow({
@@ -12,6 +13,7 @@ function createWindow(dir = '') {
 
   win.webContents.session.setPreloads([
     path.resolve(app.getPath('userData'), 'underscript.bundle.js'),
+    path.resolve(app.getAppPath(), 'src', 'preload', 'rememberMe.js'),
   ]);
 
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
@@ -50,6 +52,10 @@ function createWindow(dir = '') {
     }
   });
 }
+
+ipcMain.on('set-password', (_, username, password) => keytar.setPassword('UnderScript', username, password));
+
+ipcMain.handle('get-password', (_, username) => keytar.getPassword('UnderScript', username));
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
