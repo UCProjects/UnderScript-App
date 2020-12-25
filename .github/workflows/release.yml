@@ -23,6 +23,10 @@ jobs:
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ needs.check.outputs.commit }}
     - name: Parse Changelog # Exits if changelog not found
       id: changelog
       env:
