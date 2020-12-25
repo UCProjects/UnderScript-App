@@ -1,9 +1,6 @@
 # UnderScript App Changelog
 
-## Version 1.1.2 (2020-12-25)
-1. Start app on login page
-
-## Version 1.1.1 (2020-12-25)
+## Version 1.1.3 (2020-12-25)
 1. Start app on login page
 
 ## Version 1.1.0 (2020-12-24)
