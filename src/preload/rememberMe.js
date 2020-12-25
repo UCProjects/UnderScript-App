@@ -4,6 +4,17 @@ function setup() {
   const form = document.querySelector('form[action="SignIn"]');
   const username = document.querySelector('input[name="login"]');
   const password = document.querySelector('input[name="password"]');
+
+  function updatePassword(user) {
+    if (!user) return;
+    getPassword(user).then((value) => {
+      if (value) {
+        username.value = user;
+        password.value = value;
+      }
+    })
+  }
+
   form.addEventListener('submit', () => {
     const save = document.querySelector('input[name="stayConnected"]').checked;
     const user = username.value;
@@ -15,20 +26,9 @@ function setup() {
     }
   });
 
-  password.addEventListener('focus', () => {
-    const user = username.value;
-    if (user) getPassword(user).then((value) => password.value = (value || ''));
-  });
+  password.addEventListener('focus', () => updatePassword(username.value));
 
-  const lastUser = localStorage.getItem('underscript.login.lastUser');
-  if (lastUser) {
-    getPassword(lastUser).then((value) => {
-      if (value) {
-        username.value = lastUser;
-        password.value = value;
-      }
-    });
-  }
+  updatePassword(localStorage.getItem('underscript.login.lastUser'));
 }
 
 function getPassword(username) {
