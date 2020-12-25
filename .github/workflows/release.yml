@@ -21,7 +21,7 @@ jobs:
     needs: check
     if: needs.check.outputs.changed == 'true'
     outputs:
-      upload_url: ${{ steps.release.outputs.upload_url }}
+      id: ${{ steps.release.outputs.id }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -38,6 +38,7 @@ jobs:
         tag_name: ${{ needs.check.outputs.version }}
         commit: ${{ needs.check.outputs.commit }}
         body: ${{ steps.changelog.outputs.changes }}
+        draft: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       id: release
@@ -65,3 +66,12 @@ jobs:
         run: npm run dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  publish-release:
+    needs: [release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: eregon/publish-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ needs.release.outputs.id }}
