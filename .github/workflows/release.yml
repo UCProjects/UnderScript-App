@@ -1,0 +1,73 @@
+name: Auto-publish
+on: 
+  push:
+    branches:
+      - master
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+      version: ${{ steps.check.outputs.version }}
+      commit: ${{ steps.check.outputs.commit }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+    - name: Check version changes
+      uses: EndBug/version-check@v1
+      id: check
+  release:
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.changed == 'true'
+    outputs:
+      upload_url: ${{ steps.release.outputs.upload_url }}
+    steps:
+    - name: Tag and Release
+      uses: avakar/tag-and-release@v1
+      with:
+        tag_name: ${{ needs.check.outputs.version }}
+        commit: ${{ needs.check.outputs.commit }}
+        body: ${{ steps.changelog.outputs.changes }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      id: release
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - windows-latest
+          #- ubuntu-latest
+          #- macos-latest
+    needs: [check, release]
+    steps: 
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.check.outputs.commit }}
+      - name: Parse Changelog # Exits if changelog not found
+        id: changelog
+        env:
+          INPUT_VERSION: ${{ needs.check.outputs.version }}
+        run: node ./scripts/changelog
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          registry-url: "https://registry.npmjs.org"
+      - name: Install dependencies
+        run: npm install
+      - name: Build App
+        run: npm run dist
+      - name: Upload Asset Windows
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ./dist/UnderScript Setup ${{ needs.check.outputs.version }}.exe
+          asset_name: UnderScript.${{ needs.check.outputs.version }}.exe
+          asset_content_type: application/octet-stream
+      #- name: Upload Asset Mac
+      #- name: Upload Asset Linux
