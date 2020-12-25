@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 function createWindow(dir = '') {
@@ -33,6 +33,20 @@ function createWindow(dir = '') {
       win.webContents.openDevTools();
     } else if (input.key === 'F11') {
       win.setFullScreen(!win.isFullScreen());
+    }
+  });
+
+  win.webContents.on('will-navigate', (event, url) => {
+    const { host } = new URL(url);
+    if (host === 'undercards.net') return;
+    
+    event.preventDefault();
+    if (host === 'www.undercards.net') {
+      win.loadURL(url.replace('www.', ''));
+    } else if (host === 'unpkg.com' && url.endsWith('undercards.user.js')) {
+      // Trigger update
+    } else {
+      shell.openExternal(url);
     }
   });
 }
