@@ -47,6 +47,10 @@ function downloadScript(version) {
 }
 
 function bundleScript(depends, script) {
+  if (typeof script !== 'string') {
+    script = `${script}`;
+  }
+  regex.lastIndex = 0; // Reset the regex, just in case
   const GM_info = {
     scriptHandler: 'UnderScriptApp',
     script: {
