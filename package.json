@@ -20,6 +20,7 @@
     "electron-builder": "^22.9.1"
   },
   "dependencies": {
+    "electron-updater": "^4.3.5",
     "keytar": "^7.3.0",
     "needle": "^2.5.2"
   },

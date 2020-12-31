@@ -1,6 +1,7 @@
 const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const keytar = require('keytar');
+const { autoUpdater } = require('electron-updater');
 
 function createWindow(dir = '') {
   const win = new BrowserWindow({
@@ -53,6 +54,12 @@ function createWindow(dir = '') {
       shell.openExternal(url);
     }
   });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    // win.webContents.send('message', 'Restart to update.');
+  })
+
+  autoUpdater.checkForUpdatesAndNotify();
 }
 
 ipcMain.on('set-password', (_, username, password) => keytar.setPassword('UnderScript', username, password));
