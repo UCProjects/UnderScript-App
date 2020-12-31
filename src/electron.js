@@ -2,8 +2,9 @@ const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const keytar = require('keytar');
 const { autoUpdater } = require('electron-updater');
+const contextMenu = require('electron-context-menu');
 
-function createWindow(dir = '') {
+function createWindow() {
   const win = new BrowserWindow({
     webPreferences: {
       nodeIntegration: false,
@@ -25,6 +26,16 @@ function createWindow(dir = '') {
       }
     });
   });
+
+  contextMenu({
+    window: win,
+    showLookUpSelection: false,
+    showSearchWithGoogle: false,
+    append: (actions, params, window) => [{
+      label: 'Toggle fullscreen',
+      click: () => win.setFullScreen(!win.isFullScreen()),
+    }],
+  });
   
   win.loadURL('https://undercards.net/SignIn');
   win.setMenu(null);
@@ -34,8 +45,6 @@ function createWindow(dir = '') {
     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
       event.preventDefault();
       win.webContents.openDevTools();
-    } else if (input.key === 'F11') {
-      win.setFullScreen(!win.isFullScreen());
     } else if (input.key === 'F5' || input.control && input.key.toLowerCase() === 'r') {
       win.reload();
     }
@@ -73,4 +82,4 @@ app.on('window-all-closed', () => {
 });
 
 
-module.exports = (dir) => app.whenReady().then(() => createWindow(dir));
+module.exports = () => app.whenReady().then(() => createWindow());
