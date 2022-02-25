@@ -1,5 +1,5 @@
 /* eslint-env node */
-const fs = require('fs');
+const fs = require('fs').promises;
 const { getInput, setOutput } = require('./io');
 const { getVersionById } = require('./entries');
 

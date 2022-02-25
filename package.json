@@ -20,6 +20,7 @@
     "electron-builder": "^22.9.1"
   },
   "dependencies": {
+    "@types/fs-extra": "^9.0.13",
     "electron-context-menu": "^2.3.1",
     "electron-updater": "^4.3.5",
     "keytar": "^7.3.0",
