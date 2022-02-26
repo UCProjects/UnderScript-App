@@ -11,6 +11,7 @@ function createWindow() {
       contextIsolation: false,
       enableRemoteModule: false,
     },
+    icon: path.resolve(app.getAppPath(), 'src', 'uc.png'),
   });
 
   win.webContents.session.setPreloads([
