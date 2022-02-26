@@ -1,5 +1,5 @@
 const { app } = require('electron');
-const file = require('fs').promises;
+const file = require('fs');
 const needle = require('needle');
 const path = require('path');
 

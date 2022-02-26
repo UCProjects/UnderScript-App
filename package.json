@@ -17,10 +17,10 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^11.1.1",
-    "electron-builder": "^22.9.1"
+    "electron-builder": "^22.9.1",
+    "@types/fs-extra": "^9.0.13"
   },
   "dependencies": {
-    "@types/fs-extra": "^9.0.13",
     "electron-context-menu": "^2.3.1",
     "electron-updater": "^4.3.5",
     "keytar": "^7.3.0",
