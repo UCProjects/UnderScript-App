@@ -61,7 +61,10 @@ function bundleScript(depends, script) {
     'function UnderScriptWrapper() {',
     `const GM_info = ${JSON.stringify(GM_info)};`,
     depends,
+    // Encapsulate script code!
+    '(function () {',
     script,
+    '})();',
     '}',
     'window.addEventListener(\'DOMContentLoaded\', UnderScriptWrapper);',
   ].join('\n');
