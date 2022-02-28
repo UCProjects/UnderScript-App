@@ -7,13 +7,17 @@
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "update": "npm version minor --m=\"chore(update): Release v%s\"",
-    "patch": "npm version patch --m=\"chore(patch): Release v%s\"",
+    "update": "npm version minor --m=\"chore(update): v%s\"",
+    "patch": "npm version patch --m=\"chore(patch): v%s\"",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=16"
   },
   "keywords": [],
   "author": "feildmaster <underscript@feildmaster.com> (https://feildmaster.com/)",
   "license": "MIT",
+  "repository": "https://github.com/UCProjects/UnderScript-App",
   "devDependencies": {
     "@types/fs-extra": "^9.0.13",
     "electron": "^11.5.0",
@@ -27,6 +31,8 @@
   },
   "build": {
     "appId": "com.feildmaster.underscript.app",
-    "productName": "UnderScript"
+    "productName": "UnderScript",
+    "publish": "github",
+    "nodeVersion": "current"
   }
 }

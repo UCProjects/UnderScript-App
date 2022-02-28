@@ -1,5 +1,8 @@
 # UnderScript App Changelog
 
+## Version 1.3.4 (2020-02-28)
+1. Fixed node version (probably)
+
 ## Version 1.3.3 (2020-02-28)
 ### New Features
 1. Zoom with CTRL+Scroll
