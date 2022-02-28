@@ -1,5 +1,11 @@
 # UnderScript App Changelog
 
+## Version 1.3.0 (2020-02-28)
+### New Features
+1. Zoom with CTRL+Scroll
+### Bug fixes
+1. Fixed underscript bundler
+
 ## Version 1.2.0 (2020-12-31)
 Happy New Year!
 ### New Features

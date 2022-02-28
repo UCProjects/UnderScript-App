@@ -10,13 +10,15 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: false,
       enableRemoteModule: false,
+      worldSafeExecuteJavaScript: false,
+      preload: path.resolve(app.getAppPath(), 'src', 'preload', 'index.js'),
     },
     icon: path.resolve(app.getAppPath(), 'src', 'uc.png'),
   });
 
+  // TODO: make a script manager, instead of using this thing
   win.webContents.session.setPreloads([
     path.resolve(app.getPath('userData'), 'underscript.bundle.js'),
-    path.resolve(app.getAppPath(), 'src', 'preload', 'rememberMe.js'),
   ]);
 
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
