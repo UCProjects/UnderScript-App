@@ -1,6 +1,6 @@
 {
   "name": "underscript-app",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Dedicated application for loading UnderScript.",
   "main": "index.js",
   "scripts": {
