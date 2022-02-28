@@ -18,7 +18,7 @@ function checkVersion() {
 }
 
 function getVersion() {
-  return file.readFile(path.resolve(app.getPath('userData'), 'underscript.bundle.js'))
+  return file.readFile(path.resolve(app.getPath('userData'), 'scripts', 'underscript.bundle.js'))
   .then((buffer) => regex.exec(new String(buffer))[1])
   .catch(() => undefined);
 }
@@ -28,7 +28,7 @@ function checkForUpdates(localVersion) {
   return needle('https://unpkg.com/underscript@latest/package.json', needleOptions).then((res) => {
     const version = res.body.version;
     if (version !== localVersion) return downloadScript(version);
-    return file.readFile(path.resolve(app.getPath('userData'), 'underscript.bundle.js')).then((buffer) => new String(buffer))
+    return file.readFile(path.resolve(app.getPath('userData'), 'scripts', 'underscript.bundle.js')).then((buffer) => new String(buffer))
   });
 }
 
@@ -68,7 +68,8 @@ function bundleScript(depends, script) {
     '}',
     'window.addEventListener(\'DOMContentLoaded\', UnderScriptWrapper);',
   ].join('\n');
-  return file.writeFile(path.resolve(app.getPath('userData'), 'underscript.bundle.js'), bundle).then(() => bundle);
+  return file.mkdir(path.resolve(app.getPath('userData'), 'scripts'), { recursive: true }) // Doesn't need recursive, but I'm gonna put it anyway
+    .then(() => file.writeFile(path.resolve(app.getPath('userData'), 'scripts', 'underscript.bundle.js'), bundle).then(() => bundle));
 }
 
 function downloadFile(name, version = 'latest') {
