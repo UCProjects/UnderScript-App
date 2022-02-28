@@ -7,7 +7,6 @@
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "postinstall": "electron-builder install-app-deps",
     "update": "npm version minor --m=\"chore(update): Release v%s\"",
     "patch": "npm version patch --m=\"chore(patch): Release v%s\"",
     "test": "echo \"Error: no test specified\" && exit 1"
