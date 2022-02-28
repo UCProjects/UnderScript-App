@@ -18,7 +18,7 @@ function createWindow() {
 
   // TODO: make a script manager, instead of using this thing
   win.webContents.session.setPreloads([
-    path.resolve(app.getPath('userData'), 'underscript.bundle.js'),
+    path.resolve(app.getPath('userData'), 'scripts', 'underscript.bundle.js'),
   ]);
 
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
