@@ -43,11 +43,14 @@ function createWindow() {
   win.maximize();
 
   win.webContents.on('before-input-event', (event, input) => {
-    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+    if (input.type === 'keyUp') return;
+    if (input.control && input.shift && input.key.toLowerCase() === 'i' || input.key === 'F12') {
       event.preventDefault();
       win.webContents.openDevTools();
     } else if (input.key === 'F5' || input.control && input.key.toLowerCase() === 'r') {
       win.reload();
+    } else if (input.key === 'F11') {
+      win.setFullScreen(!win.isFullScreen());
     }
   });
 
