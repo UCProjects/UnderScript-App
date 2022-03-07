@@ -4,6 +4,7 @@ const keytar = require('keytar');
 const { autoUpdater } = require('electron-updater');
 const contextMenu = require('electron-context-menu');
 const checkVersion = require('./underscript');
+const isDev = require('electron-is-dev');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -73,6 +74,7 @@ function createWindow() {
   }
 
   win.webContents.on('will-navigate', (event, url) => {
+    if (process.env.LOCAL_DIR) checkVersion().catch(console.error);
     const { host, protocol } = new URL(url);
     if (host === 'undercards.net') return;
     
@@ -100,11 +102,21 @@ function createWindow() {
     }
   });
 
-  autoUpdater.on('update-downloaded', (info) => {
-    toast('Restart to update.');
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('update-available', (info) => {
+    toast({
+      title: 'UnderScript App Update Available',
+      text: `Now downloading v${info.version}`,
+    });
   });
-
-  autoUpdater.checkForUpdatesAndNotify();
+  autoUpdater.on('update-downloaded', (info) => {
+    toast({
+      title: `UnderScript App Updated: v${info.version}`,
+      text: `${info.releaseNotes}\n\nRestart App to finish update`
+    });
+  });
+  if (!isDev) autoUpdater.checkForUpdates();
 }
 
 ipcMain.on('set-password', (_, username, password) => keytar.setPassword('UnderScript', username, password));
