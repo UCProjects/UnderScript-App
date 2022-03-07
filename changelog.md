@@ -1,5 +1,10 @@
 # UnderScript App Changelog
 
+## Version 1.4.0 (2020-03-06)
+1. Fixed UnderScript so it can actually update
+1. URL's now open in browser
+1. Remember Me now shows that it does something in the app
+
 ## Version 1.3.4 (2020-02-28)
 1. Fixed node version (probably)
 
