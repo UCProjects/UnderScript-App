@@ -1,5 +1,9 @@
 # UnderScript App Changelog
 
+## Version 1.4.1 (2020-03-07)
+1. Hopefully fixed automated builds
+1. Fixed a bug with tab on the SignIn page
+
 ## Version 1.4.0 (2020-03-06)
 1. Can now update UnderScript without having to restart
 1. URL's now open in browser
