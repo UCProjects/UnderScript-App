@@ -3,6 +3,7 @@ const path = require('path');
 const keytar = require('keytar');
 const { autoUpdater } = require('electron-updater');
 const contextMenu = require('electron-context-menu');
+const checkVersion = require('./underscript');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -56,22 +57,51 @@ function createWindow() {
     }
   });
 
+  function update() {
+    checkVersion().then((updated) => {
+      if (!updated) return;
+      win.webContents.send('toast', {
+        title: 'Updated UnderScript',
+        text: 'Refresh page to finish update',
+        refresh: true,
+      });
+    }).catch((error) => {
+      win.webContents.send('toast', {
+        title: 'Error updating UnderScript',
+        error,
+      });
+    });
+  }
+
   win.webContents.on('will-navigate', (event, url) => {
-    const { host } = new URL(url);
+    const { host, protocol } = new URL(url);
     if (host === 'undercards.net') return;
     
     event.preventDefault();
+    if (protocol !== 'http:' && protocol !== 'https:') return;
     if (host === 'www.undercards.net') {
       win.loadURL(url.replace('www.', ''));
-    } else if (host === 'unpkg.com' && url.endsWith('undercards.user.js')) {
-      // Trigger update
+    } else if (url.endsWith('undercards.user.js')) {
+      update();
+    } else {
+      shell.openExternal(url);
+    }
+  });
+  win.webContents.on('new-window', function(e, url) {
+    e.preventDefault();
+    const { host, protocol } = new URL(url);
+    if (protocol !== 'http:' && protocol !== 'https:') return;
+    if (host === 'undercards.net' || host === 'www.undercards.net') {
+      win.loadURL(url.replace('www.', ''));
+    } else if (url.endsWith('undercards.user.js')) {
+      update();
     } else {
       shell.openExternal(url);
     }
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    // win.webContents.send('message', 'Restart to update.');
+    win.webContents.send('toast', 'Restart to update.');
   })
 
   autoUpdater.checkForUpdatesAndNotify();
