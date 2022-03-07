@@ -32,11 +32,14 @@ function setup() {
   updatePassword(user); 
   underscript.lib.tippy(document.querySelector('input[name="stayConnected"]').parentElement, {
     content: 'Click here to save your username & password!<div style="width:100%;text-align:right;font-size:12px;font-family:monospace;">via UnderScript App</div>',
-    showOnInit: user === undefined,
+    showOnInit: !user,
     placement: 'bottom-start',
     theme: 'undercards',
     animateFill: false,
+    ignoreAttributes: true,
+    duration: 0,
     arrow: true,
+    a11y: false,
   });
 }
 
