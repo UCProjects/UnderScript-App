@@ -61,6 +61,7 @@ jobs:
         with:
           node-version: '16'
           registry-url: "https://registry.npmjs.org"
+      - run: node --version
       - name: Install dependencies
         run: npm install
       - name: Build and Publish
