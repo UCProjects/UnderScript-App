@@ -4,7 +4,6 @@ const promise = new Promise((res) => {
   document.addEventListener('DOMContentLoaded', () => {
     plugin = underscript.plugin('UnderScript App');
     res(plugin);
-    promise = undefined;
   }, { once: true });
 });
 
