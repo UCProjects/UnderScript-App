@@ -28,7 +28,16 @@ function setup() {
 
   password.addEventListener('focus', () => updatePassword(username.value));
 
-  updatePassword(localStorage.getItem('underscript.login.lastUser'));
+  const user = localStorage.getItem('underscript.login.lastUser');
+  updatePassword(user); 
+  underscript.lib.tippy(document.querySelector('input[name="stayConnected"]').parentElement, {
+    content: 'Click here to save your username & password!<div style="width:100%;text-align:right;font-size:12px;font-family:monospace;">via UnderScript App</div>',
+    showOnInit: user === undefined,
+    placement: 'bottom-start',
+    theme: 'undercards',
+    animateFill: false,
+    arrow: true,
+  });
 }
 
 function getPassword(username) {
@@ -39,4 +48,4 @@ function setPassword(username, password) {
   ipcRenderer.send('set-password', username, password);
 }
 
-if (location.pathname === '/SignIn') window.addEventListener('DOMContentLoaded', setup);
+if (location.pathname === '/SignIn') document.addEventListener('DOMContentLoaded', setup);
