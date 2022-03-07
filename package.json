@@ -21,7 +21,7 @@
   "repository": "https://github.com/UCProjects/UnderScript-App",
   "devDependencies": {
     "@types/fs-extra": "^9.0.13",
-    "electron": "^11.5.0",
+    "electron": "^17.1.0",
     "electron-builder": "^22.11.5"
   },
   "dependencies": {
