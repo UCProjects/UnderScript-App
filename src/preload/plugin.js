@@ -24,4 +24,17 @@ ipcRenderer.on('toast', (_, data) => {
   });
 });
 
+getPlugin().then(({ events }) => {
+  let loggedIn = false;
+  events.on('Chat:Connected', () => {
+    loggedIn = true;
+    // sessionStorage.setItem('relog.user', window.selfUsername);
+  });
+  events.on(':GuestMode', () => {
+    if (!loggedIn) return;
+    // Go to sign-in page
+    location.href = '/SignIn';
+  });
+});
+
 module.exports = getPlugin;
