@@ -1,20 +1,19 @@
 const { ipcRenderer } = require('electron');
 
-const promise = new Promise((res) => {
+// Acts as a cache for the resulting plugin
+const plugin = new Promise((res) => {
   document.addEventListener('DOMContentLoaded', () => {
-    plugin = underscript.plugin('UnderScript App');
-    res(plugin);
-  }, { once: true });
+    res(underscript.plugin('UnderScript App'));
+  });
 });
 
-let plugin;
 function getPlugin() {
-  if (plugin) return Promise.resolve(plugin);
-  return promise;
+  return Promise.resolve(plugin); // Hand out a fresh promise
 }
 
 ipcRenderer.on('toast', (_, data) => {
   getPlugin().then((plugin) => {
+    if (!plugin) return; // Should never happen, but who knows
     if (data.refresh) {
       data.onClose = (...args) => {
         location.reload();
@@ -22,7 +21,6 @@ ipcRenderer.on('toast', (_, data) => {
       delete data.refresh;
     }
     plugin.toast(data);
-    return plugin;
   });
 });
 

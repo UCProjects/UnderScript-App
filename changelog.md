@@ -1,7 +1,7 @@
 # UnderScript App Changelog
 
 ## Version 1.4.0 (2020-03-06)
-1. Fixed UnderScript so it can actually update
+1. Can now update UnderScript without having to restart
 1. URL's now open in browser
 1. Remember Me now shows that it does something in the app
 
