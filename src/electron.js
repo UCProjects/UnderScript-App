@@ -17,11 +17,6 @@ function createWindow() {
     icon: path.resolve(app.getAppPath(), 'src', 'uc.png'),
   });
 
-  // TODO: make a script manager, instead of using this thing
-  win.webContents.session.setPreloads([
-    path.resolve(app.getPath('userData'), 'scripts', 'underscript.bundle.js'),
-  ]);
-
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -115,6 +110,8 @@ function createWindow() {
 ipcMain.on('set-password', (_, username, password) => keytar.setPassword('UnderScript', username, password));
 
 ipcMain.handle('get-password', (_, username) => keytar.getPassword('UnderScript', username));
+
+ipcMain.handle('dir:scripts', () => path.resolve(app.getPath('userData'), 'scripts'));
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
