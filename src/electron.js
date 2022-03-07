@@ -57,16 +57,20 @@ function createWindow() {
     }
   });
 
+  function toast(data) {
+    win.webContents.send('toast', data);
+  }
+
   function update() {
     checkVersion().then((updated) => {
       if (!updated) return;
-      win.webContents.send('toast', {
+      toast({
         title: 'Updated UnderScript',
         text: 'Refresh page to finish update',
         refresh: true,
       });
     }).catch((error) => {
-      win.webContents.send('toast', {
+      toast({
         title: 'Error updating UnderScript',
         error,
       });
@@ -91,6 +95,7 @@ function createWindow() {
     e.preventDefault();
     const { host, protocol } = new URL(url);
     if (protocol !== 'http:' && protocol !== 'https:') return;
+
     if (host === 'undercards.net' || host === 'www.undercards.net') {
       win.loadURL(url.replace('www.', ''));
     } else if (url.endsWith('undercards.user.js')) {
@@ -101,8 +106,8 @@ function createWindow() {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    win.webContents.send('toast', 'Restart to update.');
-  })
+    toast('Restart to update.');
+  });
 
   autoUpdater.checkForUpdatesAndNotify();
 }
