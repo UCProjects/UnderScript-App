@@ -10,6 +10,7 @@ function createWindow() {
   const win = new BrowserWindow({
     webPreferences: {
       nodeIntegration: false,
+      sandbox: false,
       contextIsolation: false,
       enableRemoteModule: false,
       worldSafeExecuteJavaScript: false,

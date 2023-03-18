@@ -33,7 +33,5 @@ exports.getVersionById = (data, id) => {
     return versions.find((v) => v.id === id);
   }
 
-  return versions
-    .filter((v) => !unreleased.test(v.id))
-    .shift();
+  return versions.find((v) => !unreleased.test(v.id));
 };

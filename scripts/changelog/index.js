@@ -1,6 +1,6 @@
 /* eslint-env node */
 const fs = require('fs');
-const { getInput, setOutput } = require('./io');
+const { getInput, setOutput } = require('@actions/core');
 const { getVersionById } = require('./entries');
 
 const changelog = getInput('path') || './changelog.md';

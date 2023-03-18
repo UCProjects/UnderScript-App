@@ -12,9 +12,9 @@ jobs:
       commit: ${{ steps.check.outputs.commit }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Check version changes
-      uses: EndBug/version-check@v1
+      uses: EndBug/version-check@v2
       id: check
   release:
     runs-on: ubuntu-latest
@@ -24,7 +24,7 @@ jobs:
       id: ${{ steps.release.outputs.id }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         ref: ${{ needs.check.outputs.commit }}
     - name: Parse Changelog # Exits if changelog not found
@@ -33,14 +33,12 @@ jobs:
         INPUT_VERSION: ${{ needs.check.outputs.version }}
       run: node ./scripts/changelog
     - name: Tag and Release
-      uses: avakar/tag-and-release@v1
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ needs.check.outputs.version }}
-        commit: ${{ needs.check.outputs.commit }}
+        target_commitish: ${{ needs.check.outputs.commit }}
         body: ${{ steps.changelog.outputs.changes }}
         draft: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       id: release
   build:
     runs-on: ${{ matrix.os }}
@@ -53,11 +51,11 @@ jobs:
     needs: [check, release]
     steps: 
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ needs.check.outputs.commit }}
       - name: Set up Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: '16'
           registry-url: "https://registry.npmjs.org"
