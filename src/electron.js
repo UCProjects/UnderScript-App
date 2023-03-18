@@ -22,7 +22,16 @@ function createWindow() {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': ['script-src \'self\' \'unsafe-eval\' \'unsafe-inline\' https://www.google-analytics.com'],
+        'Content-Security-Policy': [
+          [
+            'script-src',
+            "'self'",
+            "'unsafe-eval'",
+            "'unsafe-inline'",
+            'https://www.google-analytics.com',
+            'https://*.cloudflare.com',
+          ].join(' '),
+        ],
       }
     });
   });
