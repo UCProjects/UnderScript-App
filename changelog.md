@@ -1,6 +1,6 @@
 # UnderScript App Changelog
 
-## Version 1.5.0 (2023-03-18)
+## Version 1.5.1 (2023-03-18)
 It's been 3 years since this app has needed an update, but the biggest thing is a bug fix thanks to script kiddies being naughty.
 1. Fixed the ability to login with new captcha
 1. Download new app version automatically and notify when a download has started
