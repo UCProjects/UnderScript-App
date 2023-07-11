@@ -1,6 +1,6 @@
 # UnderScript App Changelog
 
-## Version 1.5.3 (2023-07-10)
+## Version 1.5.4 (2023-07-10)
 1. Fixed cloudflare captcha
 
 ## Version 1.5.2 (2023-03-18)
