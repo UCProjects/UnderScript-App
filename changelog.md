@@ -1,5 +1,8 @@
 # UnderScript App Changelog
 
+## Version 1.5.3 (2023-07-10)
+1. Fixed cloudflare captcha
+
 ## Version 1.5.2 (2023-03-18)
 It's been 3 years since this app has needed an update, but the biggest thing is a bug fix thanks to script kiddies being naughty.
 1. Fixed the ability to login with new captcha

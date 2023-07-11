@@ -31,6 +31,7 @@ function createWindow() {
             "'unsafe-inline'",
             'https://www.google-analytics.com',
             'https://*.cloudflare.com',
+            'worker-src blob:'
           ].join(' '),
         ],
       }
