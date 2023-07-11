@@ -22,8 +22,8 @@
   "devDependencies": {
     "@actions/core": "^1.10.0",
     "@types/fs-extra": "^9.0.13",
-    "electron": "^23.1.4",
-    "electron-builder": "^23.6.0"
+    "electron": "^25.2.0",
+    "electron-builder": "^24.4.0"
   },
   "dependencies": {
     "electron-context-menu": "^2.3.1",
