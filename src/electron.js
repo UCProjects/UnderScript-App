@@ -30,8 +30,11 @@ function createWindow() {
             "'unsafe-eval'",
             "'unsafe-inline'",
             'https://www.google-analytics.com',
+            'https://www.googletagmanager.com',
             'https://*.cloudflare.com',
-            'worker-src blob:'
+            ';',
+            'worker-src',
+            'blob:',
           ].join(' '),
         ],
       }
@@ -47,7 +50,7 @@ function createWindow() {
       click: () => win.setFullScreen(!win.isFullScreen()),
     }],
   });
-  
+
   win.loadURL('https://undercards.net/SignIn');
   win.setMenu(null);
   win.maximize();
@@ -88,7 +91,7 @@ function createWindow() {
     if (process.env.LOCAL_DIR) checkVersion().catch(console.error);
     const { host, protocol } = new URL(url);
     if (host === 'undercards.net') return;
-    
+
     event.preventDefault();
     if (protocol !== 'http:' && protocol !== 'https:') return;
     if (host === 'www.undercards.net') {
