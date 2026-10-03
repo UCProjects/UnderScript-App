@@ -1,6 +1,6 @@
 # UnderScript App Changelog
 
-## [Unreleased]
+## Version 1.6.0 (2026-10-02)
 1. Fixed Cloudflare blocking the sign in page
 1. Updated Electron (Chromium 152)
 1. UnderScript now downloads from GitHub releases and verifies the download
