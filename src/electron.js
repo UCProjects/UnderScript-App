@@ -15,12 +15,16 @@ const permissions = new Set([
   'clipboard-sanitized-write',
 ]);
 
-function trusted(event) {
+function isOrigin(url) {
   try {
-    return new URL(event.senderFrame.url).origin === origin;
+    return new URL(url).origin === origin;
   } catch (e) {
     return false;
   }
+}
+
+function trusted(event) {
+  return isOrigin(event.senderFrame?.url);
 }
 
 function createWindow() {
@@ -43,10 +47,10 @@ function createWindow() {
   });
 
   win.webContents.session.setPermissionRequestHandler((_, permission, callback, details) => {
-    callback(permissions.has(permission) && details.requestingUrl.startsWith(`${origin}/`));
+    callback(permissions.has(permission) && isOrigin(details.requestingUrl));
   });
   win.webContents.session.setPermissionCheckHandler((_, permission, requestingOrigin) => {
-    return permissions.has(permission) && requestingOrigin === origin;
+    return permissions.has(permission) && isOrigin(requestingOrigin);
   });
 
   win.webContents.session.webRequest.onHeadersReceived({ urls: [`${origin}/*`] }, (details, callback) => {
