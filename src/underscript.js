@@ -2,9 +2,9 @@ import { app } from 'electron';
 import crypto from 'crypto';
 import { promises as file } from 'fs';
 import path from 'path';
-import { bundleVersion, createBundle } from './userscript/bundle.js';
-import { cachedDownload, request } from './userscript/download.js';
-import { parseMeta } from './userscript/meta.js';
+import { bundleVersion } from './userscript/bundle.js';
+import { buildBundle } from './userscript/build.js';
+import { request } from './userscript/download.js';
 
 const repository = 'UCProjects/UnderScript';
 
@@ -83,13 +83,7 @@ async function downloadAsset(release, name) {
 }
 
 async function bundleScript(script, localResources = {}) {
-  const meta = parseMeta(script);
-  if (!meta?.version) throw new Error('Unable to determine UnderScript version');
-  const requires = await Promise.all(meta.requires.map(cachedDownload));
-  const resources = Object.fromEntries(await Promise.all(
-    Object.entries(meta.resources).map(async ([name, target]) => [name, await cachedDownload(target)]),
-  ));
-  const bundle = createBundle(meta, script, { requires, resources, localResources });
+  const { bundle } = await buildBundle(script, localResources);
   const target = bundlePath();
   const temp = `${target}.tmp`;
   await file.mkdir(path.dirname(target), { recursive: true });
