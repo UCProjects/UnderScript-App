@@ -26,19 +26,18 @@
     return body.innerHTML;
   }
 
-  underscriptApp.onToast((data) => {
-    plugin.then((instance) => {
-      if (!instance) return;
-      if (data.notes) {
-        data.text = `${formatNotes(data.notes)}${data.text ? `<p>${data.text}</p>` : ''}`;
-        delete data.notes;
-      }
-      if (data.refresh) {
-        data.onClose = () => location.reload();
-        delete data.refresh;
-      }
-      instance.toast(data);
-    });
+  underscriptApp.onToast(async (data) => {
+    const instance = await plugin;
+    if (!instance) return;
+    if (data.notes) {
+      data.text = `${formatNotes(data.notes)}${data.text ? `<p>${data.text}</p>` : ''}`;
+      delete data.notes;
+    }
+    if (data.refresh) {
+      data.onClose = () => location.reload();
+      delete data.refresh;
+    }
+    instance.toast(data);
   });
 
   plugin.then(({ events }) => {

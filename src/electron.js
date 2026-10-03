@@ -105,20 +105,20 @@ function createWindow() {
     win.webContents.send('toast', data);
   }
 
-  function update() {
-    checkVersion().then((updated) => {
-      if (!updated) return;
+  async function update() {
+    try {
+      if (!await checkVersion()) return;
       toast({
         title: 'Updated UnderScript',
         text: 'Refresh page to finish update',
         refresh: true,
       });
-    }).catch((error) => {
+    } catch (error) {
       toast({
         title: 'Error updating UnderScript',
         error,
       });
-    });
+    }
   }
 
   function open(url) {
@@ -199,4 +199,7 @@ app.on('window-all-closed', () => {
 });
 
 
-export default () => app.whenReady().then(() => createWindow());
+export default async () => {
+  await app.whenReady();
+  createWindow();
+};

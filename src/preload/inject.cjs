@@ -13,8 +13,9 @@ contextBridge.exposeInMainWorld('underscriptApp', {
   },
 });
 
-ipcRenderer.invoke('inject:scripts').then(async (scripts) => {
+(async () => {
+  const scripts = await ipcRenderer.invoke('inject:scripts');
   for (const script of scripts) {
     await webFrame.executeJavaScript(script);
   }
-});
+})();

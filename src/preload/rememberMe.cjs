@@ -14,14 +14,13 @@ function setup() {
   const password = document.querySelector('input[name="password"]');
   if (!form) return;
 
-  function updatePassword(user) {
+  async function updatePassword(user) {
     if (!user) return;
-    getPassword(user).then((value) => {
-      if (value) {
-        username.value = user;
-        password.value = value;
-      }
-    });
+    const value = await getPassword(user);
+    if (value) {
+      username.value = user;
+      password.value = value;
+    }
   }
 
   form.addEventListener('submit', () => {
