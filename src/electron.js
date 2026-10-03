@@ -4,9 +4,9 @@ const keytar = require('keytar');
 const { autoUpdater } = require('electron-updater');
 const contextMenu = require('electron-context-menu');
 const checkVersion = require('./underscript');
-const isDev = require('electron-is-dev');
 
 function createWindow() {
+  app.userAgentFallback = app.userAgentFallback.replace(/\s?underscript-app\/\S+/, '');
   const win = new BrowserWindow({
     webPreferences: {
       nodeIntegration: false,
@@ -102,10 +102,9 @@ function createWindow() {
       shell.openExternal(url);
     }
   });
-  win.webContents.on('new-window', function(e, url) {
-    e.preventDefault();
+  win.webContents.setWindowOpenHandler(({ url }) => {
     const { host, protocol } = new URL(url);
-    if (protocol !== 'http:' && protocol !== 'https:') return;
+    if (protocol !== 'http:' && protocol !== 'https:') return { action: 'deny' };
 
     if (host === 'undercards.net' || host === 'www.undercards.net') {
       win.loadURL(url.replace('www.', ''));
@@ -114,6 +113,7 @@ function createWindow() {
     } else {
       shell.openExternal(url);
     }
+    return { action: 'deny' };
   });
 
   autoUpdater.autoDownload = true;
@@ -130,7 +130,7 @@ function createWindow() {
       text: `${info.releaseNotes}\n\nRestart App to finish update`
     });
   });
-  if (!isDev) autoUpdater.checkForUpdates();
+  if (app.isPackaged) autoUpdater.checkForUpdates().catch(console.error);
 }
 
 ipcMain.on('set-password', (_, username, password) => keytar.setPassword('UnderScript', username, password));

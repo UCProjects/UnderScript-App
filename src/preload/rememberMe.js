@@ -4,6 +4,7 @@ function setup() {
   const form = document.querySelector('form[action="SignIn"]');
   const username = document.querySelector('input[name="login"]');
   const password = document.querySelector('input[name="password"]');
+  if (!form) return;
 
   function updatePassword(user) {
     if (!user) return;
