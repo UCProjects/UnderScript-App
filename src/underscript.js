@@ -2,20 +2,11 @@ import { app } from 'electron';
 import crypto from 'crypto';
 import { promises as file } from 'fs';
 import path from 'path';
+import { bundleVersion, createBundle } from './userscript/bundle.js';
+import { cachedDownload, request } from './userscript/download.js';
+import { parseMeta } from './userscript/meta.js';
 
 const repository = 'UCProjects/UnderScript';
-const regex = /^\/\/ @version\s+((?:[0-9]+\.?){3})$/m;
-const timeout = 60000;
-
-function request(url, headers) {
-  return fetch(url, {
-    headers: {
-      'User-Agent': 'UnderScript-App',
-      ...headers,
-    },
-    signal: AbortSignal.timeout(timeout),
-  });
-}
 
 function bundlePath() {
   return path.resolve(app.getPath('userData'), 'scripts', 'underscript.bundle.js');
@@ -24,8 +15,8 @@ function bundlePath() {
 export default async function checkVersion() {
   const localDir = process.env.LOCAL_DIR;
   if (localDir) { // Local testing takes priority
-    const [depends, script] = await loadFiles(path.resolve(localDir));
-    return bundleScript(depends, script, await loadResources());
+    const script = await file.readFile(path.resolve(localDir, 'undercards.user.js'), 'utf8');
+    return bundleScript(script, await loadResources());
   }
   return checkForUpdates(await getVersion());
 }
@@ -40,7 +31,7 @@ export async function readBundle() {
 
 async function getVersion() {
   try {
-    return regex.exec(String(await file.readFile(bundlePath())))[1];
+    return bundleVersion(await file.readFile(bundlePath(), 'utf8'));
   } catch (e) {
     return undefined;
   }
@@ -63,13 +54,6 @@ async function getLatestRelease() {
   return release;
 }
 
-function loadFiles(dir) {
-  return Promise.all([
-    file.readFile(path.resolve(dir, 'dependencies.js'), 'utf8'),
-    file.readFile(path.resolve(dir, 'undercards.user.js'), 'utf8'),
-  ]);
-}
-
 async function loadResources() {
   const entries = (process.env.LOCAL_RESOURCES || '').split(path.delimiter).filter(Boolean);
   return Object.fromEntries(await Promise.all(entries.map(async (entry) => {
@@ -80,11 +64,7 @@ async function loadResources() {
 }
 
 async function downloadScript(release) {
-  const [depends, script] = await Promise.all([
-    downloadAsset(release, 'dependencies.js'),
-    downloadAsset(release, 'undercards.user.js'),
-  ]);
-  await bundleScript(depends, script);
+  await bundleScript(await downloadAsset(release, 'undercards.user.js'));
   return true;
 }
 
@@ -102,31 +82,14 @@ async function downloadAsset(release, name) {
   return String(body);
 }
 
-async function bundleScript(depends, script, resources = {}) {
-  const version = regex.exec(script);
-  if (!version) throw new Error('Unable to determine UnderScript version');
-  const GM_info = {
-    scriptHandler: 'UnderScriptApp',
-    script: {
-      version: version[1],
-    },
-  };
-  const bundle = [
-    'function UnderScriptWrapper() {',
-    `const GM_info = ${JSON.stringify(GM_info)};`,
-    ...Object.keys(resources).length
-      ? [`const GM_getResourceText = ((map) => (name) => map.get(name))(new Map(${JSON.stringify(Object.entries(resources))}));`]
-      : [],
-    depends,
-    // Encapsulate script code!
-    '(function () {',
-    script,
-    '})();',
-    '}',
-    `document.addEventListener('readystatechange', () => {`,
-    '  UnderScriptWrapper();',
-    '}, { once: true });',
-  ].join('\n');
+async function bundleScript(script, localResources = {}) {
+  const meta = parseMeta(script);
+  if (!meta?.version) throw new Error('Unable to determine UnderScript version');
+  const requires = await Promise.all(meta.requires.map(cachedDownload));
+  const resources = Object.fromEntries(await Promise.all(
+    Object.entries(meta.resources).map(async ([name, target]) => [name, await cachedDownload(target)]),
+  ));
+  const bundle = createBundle(meta, script, { requires, resources: { ...resources, ...localResources } });
   const target = bundlePath();
   const temp = `${target}.tmp`;
   await file.mkdir(path.dirname(target), { recursive: true });
