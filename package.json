@@ -38,6 +38,10 @@
     "productName": "UnderScript",
     "publish": "github",
     "nodeVersion": "current",
+    "files": [
+      "**/*",
+      "!test"
+    ],
     "linux": {
       "target": "AppImage",
       "syncDesktopName": true,
