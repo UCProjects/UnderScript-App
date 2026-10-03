@@ -3,6 +3,7 @@
   "version": "1.5.5",
   "description": "Dedicated application for loading UnderScript.",
   "main": "index.js",
+  "type": "module",
   "desktopName": "UnderScript.desktop",
   "scripts": {
     "start": "electron --trace-warnings .",
@@ -27,7 +28,7 @@
     "electron-builder": "^26.15.3"
   },
   "dependencies": {
-    "electron-context-menu": "^3.6.1",
+    "electron-context-menu": "^5.1.0",
     "electron-updater": "^6.8.9",
     "keytar": "^7.9.0",
     "needle": "^3.5.0"

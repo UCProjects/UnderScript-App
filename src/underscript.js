@@ -1,8 +1,8 @@
-const { app } = require('electron');
-const crypto = require('crypto');
-const file = require('fs').promises;
-const needle = require('needle');
-const path = require('path');
+import { app } from 'electron';
+import crypto from 'crypto';
+import { promises as file } from 'fs';
+import needle from 'needle';
+import path from 'path';
 
 const repository = 'UCProjects/UnderScript';
 const regex = /^\/\/ @version\s+((?:[0-9]+\.?){3})$/m;
@@ -121,5 +121,5 @@ function bundleScript(depends, script) {
     .then(() => bundle);
 }
 
-module.exports = checkVersion;
-module.exports.readBundle = readBundle;
+export default checkVersion;
+export { readBundle };

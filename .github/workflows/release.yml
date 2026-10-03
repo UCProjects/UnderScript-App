@@ -38,7 +38,7 @@ jobs:
       id: changelog
       env:
         INPUT_VERSION: ${{ needs.check.outputs.version }}
-      run: node ./scripts/changelog
+      run: node ./scripts/changelog/index.cjs
     - name: Tag and Release
       uses: softprops/action-gh-release@v3
       with:

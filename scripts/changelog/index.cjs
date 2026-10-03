@@ -1,7 +1,7 @@
 /* eslint-env node */
 const fs = require('fs');
 const { getInput, setOutput } = require('@actions/core');
-const { getVersionById } = require('./entries');
+const { getVersionById } = require('./entries.cjs');
 
 const changelog = getInput('path') || './changelog.md';
 const target = getInput('version');

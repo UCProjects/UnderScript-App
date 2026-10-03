@@ -1,10 +1,12 @@
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
-const fs = require('fs').promises;
-const path = require('path');
-const keytar = require('keytar');
-const { autoUpdater } = require('electron-updater');
-const contextMenu = require('electron-context-menu');
-const checkVersion = require('./underscript');
+import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { promises as fs } from 'fs';
+import path from 'path';
+import keytar from 'keytar';
+import updater from 'electron-updater';
+import contextMenu from 'electron-context-menu';
+import checkVersion, { readBundle } from './underscript.js';
+
+const { autoUpdater } = updater;
 
 const origin = 'https://undercards.net';
 const permissions = new Set([
@@ -35,7 +37,7 @@ function createWindow() {
   ['inject', 'rememberMe', 'zoom'].forEach((name) => {
     win.webContents.session.registerPreloadScript({
       type: 'frame',
-      filePath: path.resolve(app.getAppPath(), 'src', 'preload', `${name}.js`),
+      filePath: path.resolve(app.getAppPath(), 'src', 'preload', `${name}.cjs`),
     });
   });
 
@@ -180,7 +182,7 @@ ipcMain.handle('get-password', (event, username) => {
 
 ipcMain.handle('inject:scripts', async (event) => {
   if (!trusted(event)) return [];
-  const bundle = await checkVersion.readBundle();
+  const bundle = await readBundle();
   if (!bundle) return [];
   const scripts = await Promise.all(['app.js', 'signin.js'].map((name) => {
     return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
@@ -195,4 +197,4 @@ app.on('window-all-closed', () => {
 });
 
 
-module.exports = () => app.whenReady().then(() => createWindow());
+export default () => app.whenReady().then(() => createWindow());
