@@ -186,7 +186,7 @@ ipcMain.handle('inject:scripts', async (event) => {
   if (!trusted(event)) return [];
   const bundle = await readBundle();
   if (!bundle) return [];
-  const scripts = await Promise.all(['app.js', 'signin.js'].map((name) => {
+  const scripts = await Promise.all(['wait.js', 'app.js', 'signin.js'].map((name) => {
     return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
   }));
   return [bundle, ...scripts];
