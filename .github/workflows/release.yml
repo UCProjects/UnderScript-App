@@ -70,7 +70,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build and Publish
-        run: npm run dist ${{ github.event_name == 'workflow_dispatch' && '-- --publish never' || '' }}
+        run: npm run dist -- --publish ${{ github.event_name == 'workflow_dispatch' && 'never' || 'onTagOrDraft' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload build
