@@ -1,3 +1,4 @@
+import { gmApi } from './gm.js';
 import { matchesUrl } from './match.js';
 
 const infoPattern = /^const GM_info = (\{.*\});$/m;
@@ -26,6 +27,7 @@ export function createBundle(meta, script, { requires = [], resources = {} } = {
     ...names.length
       ? [`const GM_getResourceText = ((map) => (name) => map.get(name))(new Map(${JSON.stringify(Object.entries(resources))}));`]
       : [],
+    ...gmApi(meta),
     ...requires.map((code) => `${code}\n;`),
     // Encapsulate script code!
     '(function () {',
