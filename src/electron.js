@@ -5,6 +5,21 @@ const { autoUpdater } = require('electron-updater');
 const contextMenu = require('electron-context-menu');
 const checkVersion = require('./underscript');
 
+const origin = 'https://undercards.net';
+const permissions = new Set([
+  'fullscreen',
+  'notifications',
+  'clipboard-sanitized-write',
+]);
+
+function trusted(event) {
+  try {
+    return new URL(event.senderFrame.url).origin === origin;
+  } catch (e) {
+    return false;
+  }
+}
+
 function createWindow() {
   app.userAgentFallback = app.userAgentFallback.replace(/\s?underscript-app\/\S+/, '');
   const win = new BrowserWindow({
@@ -19,7 +34,18 @@ function createWindow() {
     icon: path.resolve(app.getAppPath(), 'src', 'uc.png'),
   });
 
-  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+  win.webContents.session.setPermissionRequestHandler((_, permission, callback, details) => {
+    callback(permissions.has(permission) && details.requestingUrl.startsWith(`${origin}/`));
+  });
+  win.webContents.session.setPermissionCheckHandler((_, permission, requestingOrigin) => {
+    return permissions.has(permission) && requestingOrigin === origin;
+  });
+
+  win.webContents.session.webRequest.onHeadersReceived({ urls: [`${origin}/*`] }, (details, callback) => {
+    if (details.resourceType !== 'mainFrame' && details.resourceType !== 'subFrame') {
+      callback({});
+      return;
+    }
     callback({
       responseHeaders: {
         ...details.responseHeaders,
@@ -87,21 +113,25 @@ function createWindow() {
     });
   }
 
-  win.webContents.on('will-navigate', (event, url) => {
-    if (process.env.LOCAL_DIR) checkVersion().catch(console.error);
+  function navigate(event, url) {
     const { host, protocol } = new URL(url);
-    if (host === 'undercards.net') return;
+    if (host === 'undercards.net' && protocol === 'https:') return;
 
     event.preventDefault();
     if (protocol !== 'http:' && protocol !== 'https:') return;
-    if (host === 'www.undercards.net') {
-      win.loadURL(url.replace('www.', ''));
+    if (host === 'undercards.net' || host === 'www.undercards.net') {
+      win.loadURL(url.replace('www.', '').replace(/^http:/, 'https:'));
     } else if (url.endsWith('undercards.user.js')) {
       update();
     } else {
       shell.openExternal(url);
     }
+  }
+  win.webContents.on('will-navigate', (event, url) => {
+    if (process.env.LOCAL_DIR) checkVersion().catch(console.error);
+    navigate(event, url);
   });
+  win.webContents.on('will-redirect', navigate);
   win.webContents.setWindowOpenHandler(({ url }) => {
     const { host, protocol } = new URL(url);
     if (protocol !== 'http:' && protocol !== 'https:') return { action: 'deny' };
@@ -133,9 +163,15 @@ function createWindow() {
   if (app.isPackaged) autoUpdater.checkForUpdates().catch(console.error);
 }
 
-ipcMain.on('set-password', (_, username, password) => keytar.setPassword('UnderScript', username, password));
+ipcMain.on('set-password', (event, username, password) => {
+  if (!trusted(event) || typeof username !== 'string' || typeof password !== 'string') return;
+  keytar.setPassword('UnderScript', username, password);
+});
 
-ipcMain.handle('get-password', (_, username) => keytar.getPassword('UnderScript', username));
+ipcMain.handle('get-password', (event, username) => {
+  if (!trusted(event) || typeof username !== 'string') return null;
+  return keytar.getPassword('UnderScript', username);
+});
 
 ipcMain.handle('dir:scripts', () => path.resolve(app.getPath('userData'), 'scripts'));
 
