@@ -164,7 +164,8 @@ function createWindow() {
   autoUpdater.on('update-downloaded', (info) => {
     toast({
       title: `UnderScript App Updated: v${info.version}`,
-      text: `${info.releaseNotes}\n\nRestart App to finish update`
+      notes: Array.isArray(info.releaseNotes) ? info.releaseNotes.map(({ note }) => note).join('') : info.releaseNotes,
+      text: 'Restart App to finish update',
     });
   });
   if (app.isPackaged) autoUpdater.checkForUpdates().catch(console.error);

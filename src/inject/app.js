@@ -14,9 +14,25 @@
     });
   });
 
+  function formatNotes(html) {
+    const { body } = new DOMParser().parseFromString(html, 'text/html');
+    body.querySelectorAll('ol, ul').forEach((list) => {
+      list.style.textAlign = 'left';
+      list.style.whiteSpace = 'normal';
+      list.style.listStyle = list.tagName === 'OL' ? 'decimal' : 'disc';
+      list.style.margin = '0.5em 0';
+      list.style.paddingLeft = '1.5em';
+    });
+    return body.innerHTML;
+  }
+
   underscriptApp.onToast((data) => {
     plugin.then((instance) => {
       if (!instance) return;
+      if (data.notes) {
+        data.text = `${formatNotes(data.notes)}${data.text ? `<p>${data.text}</p>` : ''}`;
+        delete data.notes;
+      }
       if (data.refresh) {
         data.onClose = () => location.reload();
         delete data.refresh;
