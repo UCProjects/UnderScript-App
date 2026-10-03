@@ -15,7 +15,7 @@ import update, { readBundle } from './src/underscript.js';
         type: 'warning',
         title: 'UnderScript',
         message: 'UnderScript could not be downloaded',
-        detail: `${failure.message}\n\nThe app will keep running without it. Restart the app to try again.`,
+        detail: `${failure.cause?.message || failure.cause?.code || failure.message}\n\nThe app will keep running without it. Restart the app to try again.`,
       });
     }
   } catch (err) {
