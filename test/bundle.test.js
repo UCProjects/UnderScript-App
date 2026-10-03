@@ -42,10 +42,24 @@ describe('createBundle', () => {
     assert.equal(bundleVersion(undefined), undefined);
   });
 
-  it('only defines GM_getResourceText when there are resources', () => {
-    assert.doesNotMatch(createBundle({ version: '1' }, ''), /GM_getResourceText/);
-    assert.doesNotMatch(createBundle({ version: '1' }, '', { resources: {} }), /GM_getResourceText/);
-    assert.match(createBundle({ version: '1' }, '', { resources: { a: 'x' } }), /const GM_getResourceText/);
+  it('only defines GM_getResourceText when it is granted', () => {
+    const resources = { a: 'x' };
+    assert.doesNotMatch(createBundle({ version: '1' }, ''), /const GM_getResourceText/);
+    assert.doesNotMatch(createBundle({ version: '1', grants: ['none'] }, '', { resources }), /const GM_getResourceText/);
+    assert.doesNotMatch(createBundle({ version: '1', grants: ['GM_getValue'] }, '', { resources }), /const GM_getResourceText/);
+    assert.match(createBundle({ version: '1', grants: ['GM_getResourceText'] }, ''), /const GM_getResourceText/);
+    assert.match(createBundle({ version: '1', grants: ['GM_getResourceText'] }, '', { resources }), /const GM_getResourceText/);
+  });
+
+  it('treats local resources as an implicit grant', () => {
+    assert.doesNotMatch(createBundle({ version: '1' }, '', { localResources: {} }), /const GM_getResourceText/);
+    assert.match(createBundle({ version: '1', grants: ['none'] }, '', { localResources: { a: 'x' } }), /const GM_getResourceText/);
+  });
+
+  it('always provides GM_info, with or without grants', () => {
+    for (const grants of [undefined, [], ['none'], ['GM_getValue']]) {
+      assert.match(createBundle({ version: '1', grants }, ''), /^const GM_info = /m);
+    }
   });
 
   it('waits for the next readystatechange before running the script', () => {
@@ -88,13 +102,35 @@ describe('createBundle', () => {
 
   it('serves resources through GM_getResourceText', () => {
     const bundle = createBundle(
-      { version: '1' },
+      { version: '1', grants: ['GM_getResourceText'] },
       'window.got = [GM_getResourceText("data"), GM_getResourceText("missing"), GM_getResourceText("constructor")].join("|");',
       { resources: { data: '{"a":1}' } },
     );
     const { sandbox, handlers } = run(bundle);
     handlers[0].handler();
     assert.equal(sandbox.got, '{"a":1}||');
+  });
+
+  it('lets local resources add to and override the declared ones', () => {
+    const bundle = createBundle(
+      { version: '1', grants: ['none'] },
+      'window.got = [GM_getResourceText("declared"), GM_getResourceText("shared"), GM_getResourceText("local")].join("|");',
+      { resources: { declared: 'D', shared: 'old' }, localResources: { shared: 'new', local: 'L' } },
+    );
+    const { sandbox, handlers } = run(bundle);
+    handlers[0].handler();
+    assert.equal(sandbox.got, 'D|new|L');
+  });
+
+  it('leaves GM_getResourceText undefined for scripts that do not grant it', () => {
+    const bundle = createBundle(
+      { version: '1', grants: ['none'] },
+      'window.type = typeof GM_getResourceText;',
+      { resources: { data: 'x' } },
+    );
+    const { sandbox, handlers } = run(bundle);
+    handlers[0].handler();
+    assert.equal(sandbox.type, 'undefined');
   });
 
   it('exposes GM_info to the script', () => {

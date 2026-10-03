@@ -89,7 +89,7 @@ async function bundleScript(script, localResources = {}) {
   const resources = Object.fromEntries(await Promise.all(
     Object.entries(meta.resources).map(async ([name, target]) => [name, await cachedDownload(target)]),
   ));
-  const bundle = createBundle(meta, script, { requires, resources: { ...resources, ...localResources } });
+  const bundle = createBundle(meta, script, { requires, resources, localResources });
   const target = bundlePath();
   const temp = `${target}.tmp`;
   await file.mkdir(path.dirname(target), { recursive: true });
