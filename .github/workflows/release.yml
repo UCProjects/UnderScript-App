@@ -3,8 +3,10 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 jobs:
   check:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check.outputs.changed }}
@@ -12,9 +14,9 @@ jobs:
       commit: ${{ steps.check.outputs.commit }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
     - name: Check version changes
-      uses: EndBug/version-check@v2
+      uses: EndBug/version-check@v3
       id: check
   release:
     runs-on: ubuntu-latest
@@ -24,13 +26,13 @@ jobs:
       id: ${{ steps.release.outputs.id }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
       with:
         ref: ${{ needs.check.outputs.commit }}
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v7
       with:
-        node-version: '16'
+        node-version: '24'
     - run: npm install @actions/core
     - name: Parse Changelog # Exits if changelog not found
       id: changelog
@@ -38,7 +40,7 @@ jobs:
         INPUT_VERSION: ${{ needs.check.outputs.version }}
       run: node ./scripts/changelog
     - name: Tag and Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ needs.check.outputs.version }}
         target_commitish: ${{ needs.check.outputs.commit }}
@@ -54,28 +56,40 @@ jobs:
           - ubuntu-latest
           - macos-latest
     needs: [check, release]
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.release.result == 'success') }}
     steps: 
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
-          ref: ${{ needs.check.outputs.commit }}
+          ref: ${{ needs.check.outputs.commit || github.sha }}
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
-          node-version: '16'
+          node-version: '24'
       - run: node --version
       - name: Install dependencies
         run: npm install
       - name: Build and Publish
-        run: npm run dist
+        run: npm run dist ${{ github.event_name == 'workflow_dispatch' && '-- --publish never' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload build
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.dmg
+            dist/*.zip
+            dist/latest*.yml
+          if-no-files-found: error
   publish-release:
     needs: [release, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: eregon/publish-release@v1
+      - name: Publish release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          release_id: ${{ needs.release.outputs.id }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api --method PATCH "repos/${{ github.repository }}/releases/${{ needs.release.outputs.id }}" -F draft=false
