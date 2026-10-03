@@ -3,6 +3,7 @@
   "version": "1.5.5",
   "description": "Dedicated application for loading UnderScript.",
   "main": "index.js",
+  "desktopName": "UnderScript.desktop",
   "scripts": {
     "start": "electron --trace-warnings .",
     "pack": "electron-builder --dir",
@@ -35,6 +36,11 @@
     "appId": "com.feildmaster.underscript.app",
     "productName": "UnderScript",
     "publish": "github",
-    "nodeVersion": "current"
+    "nodeVersion": "current",
+    "linux": {
+      "target": "AppImage",
+      "syncDesktopName": true,
+      "category": "Game"
+    }
   }
 }
