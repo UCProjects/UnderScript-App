@@ -11,6 +11,8 @@ import { download } from './userscript/download.js';
 import { scriptId } from './userscript/gm.js';
 import { createInstaller } from './userscript/install.js';
 import { createInstalled } from './userscript/installed.js';
+import { createSettings } from './launcher/settings.js';
+import { createLauncher } from './launcher/window.js';
 import { loadRegistry } from './userscript/registry.js';
 import { createStore } from './userscript/store.js';
 
@@ -94,6 +96,9 @@ function createWindow() {
     append: (actions, params, window) => [{
       label: 'Toggle fullscreen',
       click: () => win.setFullScreen(!win.isFullScreen()),
+    }, {
+      label: 'Manage plugins',
+      click: () => getLauncher().show('manager'),
     }],
   });
 
@@ -110,6 +115,9 @@ function createWindow() {
       win.reload();
     } else if (input.key === 'F11') {
       win.setFullScreen(!win.isFullScreen());
+    } else if (input.control && input.shift && input.key.toLowerCase() === 'p') {
+      event.preventDefault();
+      getLauncher().show('manager');
     }
   });
 
@@ -316,7 +324,27 @@ app.on('window-all-closed', () => {
 });
 
 
+let launcher;
+let launcherSettings;
+
+function getLauncher() {
+  launcherSettings ??= createSettings(path.resolve(app.getPath('userData'), 'scripts', 'launcher.json'));
+  launcher ??= createLauncher({ getInstalled, settings: launcherSettings });
+  return launcher;
+}
+
 export default async () => {
   await app.whenReady();
+  const shown = getLauncher();
+  if ((await getInstalled().list()).length && (await launcherSettings.read()).showAtStartup) {
+    const { outcome, close } = await shown.show('launcher');
+    if (outcome !== 'done') {
+      app.quit();
+      return;
+    }
+    createWindow();
+    close();
+    return;
+  }
   createWindow();
 };

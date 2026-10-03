@@ -1,0 +1,139 @@
+:root {
+  color-scheme: dark;
+  --background: #0d0d14;
+  --panel: #171724;
+  --line: #2b2b40;
+  --text: #e8e8f0;
+  --muted: #9a9ab0;
+  --accent: #428bca;
+  --danger: #d9534f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  color: var(--text);
+  font: 14px/1.4 system-ui, 'Segoe UI', sans-serif;
+}
+
+header {
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+#summary {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 24px;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+li.disabled .name {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+li input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+button {
+  padding: 7px 16px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button.remove.confirm {
+  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+#start {
+  min-width: 96px;
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+}
+
+#startup-label {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.empty {
+  padding: 24px 0;
+  color: var(--muted);
+  text-align: center;
+}
