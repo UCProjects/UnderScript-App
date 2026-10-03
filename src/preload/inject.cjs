@@ -6,6 +6,7 @@ console.log(`UnderScript App(v${version}): Loaded`);
 let listening = false;
 
 contextBridge.exposeInMainWorld('underscriptApp', {
+  version,
   onToast: (callback) => {
     if (listening) return;
     listening = true;
