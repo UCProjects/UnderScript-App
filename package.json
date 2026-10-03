@@ -13,7 +13,7 @@
     "postinstall": "electron-builder install-app-deps",
     "update": "npm version minor --m=\"chore(update): v%s\"",
     "patch": "npm version patch --m=\"chore(patch): v%s\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/"
   },
   "engines": {
     "node": ">=22.12"
