@@ -1,5 +1,10 @@
 # UnderScript App Changelog
 
+## [Unreleased]
+1. Fixed the remember me hint sometimes not showing on the sign in page
+1. Update notes now show as a numbered list
+1. The app version is logged to the console
+
 ## Version 1.6.0 (2026-10-02)
 1. Fixed Cloudflare blocking the sign in page
 1. Updated Electron (Chromium 152)
