@@ -5,7 +5,9 @@ import keytar from 'keytar';
 import updater from 'electron-updater';
 import contextMenu from 'electron-context-menu';
 import checkVersion, { readBundle } from './underscript.js';
-import { runsOn } from './userscript/bundle.js';
+import { bundleInfo, runsOn } from './userscript/bundle.js';
+import { scriptId } from './userscript/gm.js';
+import { createStore } from './userscript/store.js';
 
 const { autoUpdater } = updater;
 
@@ -187,14 +189,49 @@ ipcMain.handle('get-password', (event, username) => {
   return keytar.getPassword('UnderScript', username);
 });
 
+let store;
+const served = new Set();
+
+function getStore() {
+  store ??= createStore(path.resolve(app.getPath('userData'), 'scripts', 'values'));
+  return store;
+}
+
 ipcMain.handle('inject:scripts', async (event) => {
-  if (!trusted(event)) return [];
+  const none = { scripts: [], values: {} };
+  if (!trusted(event)) return none;
   const bundle = await readBundle();
-  if (!bundle || !runsOn(bundle, event.senderFrame.url)) return [];
-  const scripts = await Promise.all(['wait.js', 'app.js', 'signin.js'].map((name) => {
-    return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
-  }));
-  return [bundle, ...scripts];
+  if (!bundle || !runsOn(bundle, event.senderFrame.url)) return none;
+  const id = scriptId(bundleInfo(bundle));
+  served.add(id);
+  const [values, ...scripts] = await Promise.all([
+    getStore().get(id),
+    ...['wait.js', 'app.js', 'signin.js'].map((name) => {
+      return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
+    }),
+  ]);
+  return { scripts: [bundle, ...scripts], values: { [id]: values } };
+});
+
+ipcMain.on('gm:set', (event, id, key, raw) => {
+  if (!trusted(event) || !served.has(id)) return;
+  getStore().set(id, key, raw).catch(console.error);
+});
+
+ipcMain.on('gm:delete', (event, id, key) => {
+  if (!trusted(event) || !served.has(id)) return;
+  getStore().remove(id, key).catch(console.error);
+});
+
+let flushed = false;
+
+app.on('before-quit', (event) => {
+  if (flushed || !store) return;
+  event.preventDefault();
+  store.flush().finally(() => {
+    flushed = true;
+    app.quit();
+  });
 });
 
 app.on('window-all-closed', () => {
