@@ -120,36 +120,36 @@ function createWindow() {
     });
   }
 
-  function navigate(event, url) {
-    const { host, protocol } = new URL(url);
-    if (host === 'undercards.net' && protocol === 'https:') return;
+  function open(url) {
+    const target = new URL(url);
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') return;
 
-    event.preventDefault();
-    if (protocol !== 'http:' && protocol !== 'https:') return;
-    if (host === 'undercards.net' || host === 'www.undercards.net') {
-      win.loadURL(url.replace('www.', '').replace(/^http:/, 'https:'));
+    if (target.host === 'undercards.net' || target.host === 'www.undercards.net') {
+      target.host = 'undercards.net';
+      target.protocol = 'https:';
+      win.loadURL(target.href);
     } else if (url.endsWith('undercards.user.js')) {
       update();
     } else {
       shell.openExternal(url);
     }
   }
+
+  function navigate(event, url) {
+    const { host, protocol } = new URL(url);
+    if (host === 'undercards.net' && protocol === 'https:') return;
+
+    event.preventDefault();
+    open(url);
+  }
+
   win.webContents.on('will-navigate', (event, url) => {
     if (process.env.LOCAL_DIR) checkVersion().catch(console.error);
     navigate(event, url);
   });
   win.webContents.on('will-redirect', navigate);
   win.webContents.setWindowOpenHandler(({ url }) => {
-    const { host, protocol } = new URL(url);
-    if (protocol !== 'http:' && protocol !== 'https:') return { action: 'deny' };
-
-    if (host === 'undercards.net' || host === 'www.undercards.net') {
-      win.loadURL(url.replace('www.', ''));
-    } else if (url.endsWith('undercards.user.js')) {
-      update();
-    } else {
-      shell.openExternal(url);
-    }
+    open(url);
     return { action: 'deny' };
   });
 
