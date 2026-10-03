@@ -25,6 +25,10 @@ function checkVersion() {
   return getVersion().then(checkForUpdates);
 }
 
+function readBundle() {
+  return file.readFile(bundlePath(), 'utf8').catch(() => null);
+}
+
 function getVersion() {
   return file.readFile(bundlePath())
     .then((buffer) => regex.exec(String(buffer))[1])
@@ -118,3 +122,4 @@ function bundleScript(depends, script) {
 }
 
 module.exports = checkVersion;
+module.exports.readBundle = readBundle;

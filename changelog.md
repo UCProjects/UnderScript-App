@@ -4,6 +4,7 @@
 1. Fixed Cloudflare blocking the sign in page
 1. Updated Electron (Chromium 152)
 1. UnderScript now downloads from GitHub releases and verifies the download
+1. The app window is sandboxed, and UnderScript no longer runs with access to your computer
 1. Links that open a new window are handled by the app again
 
 ## Version 1.5.5 (2024-08-12)

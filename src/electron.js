@@ -1,4 +1,5 @@
 const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const fs = require('fs').promises;
 const path = require('path');
 const keytar = require('keytar');
 const { autoUpdater } = require('electron-updater');
@@ -25,13 +26,17 @@ function createWindow() {
   const win = new BrowserWindow({
     webPreferences: {
       nodeIntegration: false,
-      sandbox: false,
-      contextIsolation: false,
-      enableRemoteModule: false,
-      worldSafeExecuteJavaScript: false,
-      preload: path.resolve(app.getAppPath(), 'src', 'preload', 'index.js'),
+      sandbox: true,
+      contextIsolation: true,
     },
     icon: path.resolve(app.getAppPath(), 'src', 'uc.png'),
+  });
+
+  ['inject', 'rememberMe', 'zoom'].forEach((name) => {
+    win.webContents.session.registerPreloadScript({
+      type: 'frame',
+      filePath: path.resolve(app.getAppPath(), 'src', 'preload', `${name}.js`),
+    });
   });
 
   win.webContents.session.setPermissionRequestHandler((_, permission, callback, details) => {
@@ -173,7 +178,15 @@ ipcMain.handle('get-password', (event, username) => {
   return keytar.getPassword('UnderScript', username);
 });
 
-ipcMain.handle('dir:scripts', () => path.resolve(app.getPath('userData'), 'scripts'));
+ipcMain.handle('inject:scripts', async (event) => {
+  if (!trusted(event)) return [];
+  const bundle = await checkVersion.readBundle();
+  if (!bundle) return [];
+  const scripts = await Promise.all(['app.js', 'signin.js'].map((name) => {
+    return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
+  }));
+  return [bundle, ...scripts];
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

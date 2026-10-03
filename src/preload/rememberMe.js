@@ -1,5 +1,13 @@
 const { ipcRenderer } = require('electron');
 
+function getPassword(username) {
+  return ipcRenderer.invoke('get-password', username);
+}
+
+function setPassword(username, password) {
+  ipcRenderer.send('set-password', username, password);
+}
+
 function setup() {
   const form = document.querySelector('form[action="SignIn"]');
   const username = document.querySelector('input[name="login"]');
@@ -13,7 +21,7 @@ function setup() {
         username.value = user;
         password.value = value;
       }
-    })
+    });
   }
 
   form.addEventListener('submit', () => {
@@ -29,27 +37,7 @@ function setup() {
 
   password.addEventListener('focus', () => updatePassword(username.value));
 
-  const user = localStorage.getItem('underscript.login.lastUser');
-  updatePassword(user);
-  underscript.lib.tippy(document.querySelector('input[name="stayConnected"]').parentElement, {
-    content: 'Click here to save your username & password!<div style="width:100%;text-align:right;font-size:12px;font-family:monospace;">via UnderScript App</div>',
-    showOnInit: !user,
-    placement: 'bottom-start',
-    theme: 'undercards',
-    animateFill: false,
-    ignoreAttributes: true,
-    duration: 0,
-    arrow: true,
-    a11y: false,
-  });
-}
-
-function getPassword(username) {
-  return ipcRenderer.invoke('get-password', username);
-}
-
-function setPassword(username, password) {
-  ipcRenderer.send('set-password', username, password);
+  updatePassword(localStorage.getItem('underscript.login.lastUser'));
 }
 
 if (location.pathname === '/SignIn') document.addEventListener('DOMContentLoaded', setup);

@@ -8,7 +8,7 @@ function handle(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.addEventListener('wheel', handle, { 
+  document.addEventListener('wheel', handle, {
     passive: true,
   });
 });
