@@ -34,9 +34,11 @@ export function createBundle(meta, script, { requires = [], resources = {}, loca
     script,
     '})();',
     '}',
-    `document.addEventListener('readystatechange', () => {`,
+    "if (document.readyState === 'loading') {",
+    "  document.addEventListener('readystatechange', () => UnderScriptWrapper(), { once: true });",
+    '} else {',
     '  UnderScriptWrapper();',
-    '}, { once: true });',
+    '}',
   ].join('\n');
 }
 

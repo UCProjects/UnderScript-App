@@ -21,7 +21,7 @@ function run(meta, script, api) {
   const handlers = [];
   const sandbox = {
     JSON,
-    document: { addEventListener: (type, handler) => handlers.push(handler) },
+    document: { readyState: 'loading', addEventListener: (type, handler) => handlers.push(handler) },
   };
   if (api) sandbox.underscriptApp = api;
   sandbox.window = sandbox;

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, shell, ipcMain } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import keytar from 'keytar';
@@ -6,7 +6,12 @@ import updater from 'electron-updater';
 import contextMenu from 'electron-context-menu';
 import checkVersion, { readBundle } from './underscript.js';
 import { bundleInfo, runsOn } from './userscript/bundle.js';
+import { buildBundle } from './userscript/build.js';
+import { download } from './userscript/download.js';
 import { scriptId } from './userscript/gm.js';
+import { createInstaller } from './userscript/install.js';
+import { createInstalled } from './userscript/installed.js';
+import { loadRegistry } from './userscript/registry.js';
 import { createStore } from './userscript/store.js';
 
 const { autoUpdater } = updater;
@@ -128,6 +133,64 @@ function createWindow() {
     }
   }
 
+  async function confirmInstall({ kind, name, version, previousVersion, details }) {
+    const shown = details.slice(0, 20);
+    if (details.length > shown.length) shown.push(`...and ${details.length - shown.length} more`);
+    const { response } = await dialog.showMessageBox(win, kind === 'new' ? {
+      type: 'question',
+      buttons: ['Install', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Install plugin',
+      message: `Install "${name}" v${version}?`,
+      detail: `${shown.join('\n')}\n\nPlugins run on undercards.net with access to your account. Only install plugins you trust.`,
+    } : {
+      type: 'warning',
+      buttons: ['Update', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Update plugin',
+      message: `"${name}" changed more than its version (v${previousVersion} to v${version})`,
+      detail: `${shown.join('\n')}\n\nOnly update if you still trust this plugin.`,
+    });
+    return response === 0;
+  }
+
+  const installer = createInstaller({
+    loadRegistry,
+    fetchScript: (url) => download({ url }),
+    build: (source) => buildBundle(source),
+    installed: getInstalled(),
+    confirm: confirmInstall,
+  });
+
+  async function installPlugin(url) {
+    try {
+      const result = await installer(url);
+      if (result.status === 'installed') {
+        toast({ title: `Installed ${result.name}`, text: 'Refresh the page to load it' });
+      } else if (result.status === 'updated') {
+        toast({ title: `Updated ${result.name}`, text: `v${result.previousVersion} to v${result.version}. Refresh the page to load it` });
+      } else if (result.status === 'rejected') {
+        await dialog.showMessageBox(win, {
+          type: 'warning',
+          title: 'Plugin not installed',
+          message: 'That plugin is not in the community plugin list',
+          detail: `The app only installs plugins listed in the community registry.\n\n${result.url}`,
+        });
+      } else if (result.status === 'failed') {
+        await dialog.showMessageBox(win, {
+          type: 'error',
+          title: 'Plugin not installed',
+          message: 'The plugin could not be installed',
+          detail: String(result.error?.message ?? result.error),
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   function open(url) {
     const target = new URL(url);
     if (target.protocol !== 'http:' && target.protocol !== 'https:') return;
@@ -138,6 +201,8 @@ function createWindow() {
       win.loadURL(target.href);
     } else if (url.endsWith('undercards.user.js')) {
       update();
+    } else if (target.pathname.endsWith('.user.js')) {
+      installPlugin(url);
     } else {
       shell.openExternal(url);
     }
@@ -190,6 +255,7 @@ ipcMain.handle('get-password', (event, username) => {
 });
 
 let store;
+let installed;
 const served = new Set();
 
 function getStore() {
@@ -197,20 +263,29 @@ function getStore() {
   return store;
 }
 
+function getInstalled() {
+  installed ??= createInstalled(path.resolve(app.getPath('userData'), 'scripts', 'plugins'));
+  return installed;
+}
+
 ipcMain.handle('inject:scripts', async (event) => {
   const none = { scripts: [], values: {} };
   if (!trusted(event)) return none;
   const bundle = await readBundle();
   if (!bundle || !runsOn(bundle, event.senderFrame.url)) return none;
-  const id = scriptId(bundleInfo(bundle));
-  served.add(id);
+  const plugins = await getInstalled().bundlesFor(event.senderFrame.url);
+  const ids = [bundle, ...plugins.map((plugin) => plugin.bundle)].map((text) => scriptId(bundleInfo(text)));
+  ids.forEach((id) => served.add(id));
   const [values, ...scripts] = await Promise.all([
-    getStore().get(id),
+    Promise.all(ids.map(async (id) => [id, await getStore().get(id)])),
     ...['wait.js', 'app.js', 'signin.js'].map((name) => {
       return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
     }),
   ]);
-  return { scripts: [bundle, ...scripts], values: { [id]: values } };
+  return {
+    scripts: [bundle, ...scripts, ...plugins.map((plugin) => plugin.bundle)],
+    values: Object.fromEntries(values),
+  };
 });
 
 ipcMain.on('gm:set', (event, id, key, raw) => {

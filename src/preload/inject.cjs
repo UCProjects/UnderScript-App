@@ -30,6 +30,10 @@ contextBridge.exposeInMainWorld('underscriptApp', {
   const injection = await ipcRenderer.invoke('inject:scripts');
   stored = injection.values;
   for (const script of injection.scripts) {
-    await webFrame.executeJavaScript(script);
+    try {
+      await webFrame.executeJavaScript(script);
+    } catch (error) {
+      console.error(error);
+    }
   }
 })();

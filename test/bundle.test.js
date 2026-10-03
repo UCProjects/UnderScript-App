@@ -3,10 +3,11 @@ import { describe, it } from 'node:test';
 import vm from 'node:vm';
 import { bundleInfo, bundleVersion, createBundle, runsOn } from '../src/userscript/bundle.js';
 
-function run(bundle) {
+function run(bundle, readyState = 'loading') {
   const handlers = [];
   const sandbox = {
     document: {
+      readyState,
       addEventListener: (type, handler, options) => handlers.push({ type, handler, options }),
     },
   };
@@ -70,6 +71,14 @@ describe('createBundle', () => {
     assert.equal(handlers[0].options.once, true);
     handlers[0].handler();
     assert.equal(sandbox.ran, true);
+  });
+
+  it('runs right away when the document has already finished loading', () => {
+    for (const state of ['interactive', 'complete']) {
+      const { sandbox, handlers } = run(createBundle({ version: '1' }, 'window.ran = true;'), state);
+      assert.equal(sandbox.ran, true, state);
+      assert.equal(handlers.length, 0, state);
+    }
   });
 
   it('runs requires first, in order, in scope of the script', () => {
