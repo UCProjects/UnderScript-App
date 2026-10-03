@@ -1,5 +1,8 @@
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
+const version = process.argv.find((arg) => arg.startsWith('--app-version='))?.split('=')[1];
+console.log(`UnderScript App(v${version}): Loaded`);
+
 let listening = false;
 
 contextBridge.exposeInMainWorld('underscriptApp', {

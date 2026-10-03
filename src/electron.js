@@ -30,6 +30,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       contextIsolation: true,
+      additionalArguments: [`--app-version=${app.getVersion()}`],
     },
     icon: path.resolve(app.getAppPath(), 'src', 'uc.png'),
   });
