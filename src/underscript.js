@@ -1,17 +1,21 @@
 import { app } from 'electron';
 import crypto from 'crypto';
 import { promises as file } from 'fs';
-import needle from 'needle';
 import path from 'path';
 
 const repository = 'UCProjects/UnderScript';
 const regex = /^\/\/ @version\s+((?:[0-9]+\.?){3})$/m;
+const timeout = 60000;
 
-const needleOptions = {
-  follow_max: 5,
-  open_timeout: 15000,
-  read_timeout: 60000,
-};
+function request(url, headers) {
+  return fetch(url, {
+    headers: {
+      'User-Agent': 'UnderScript-App',
+      ...headers,
+    },
+    signal: AbortSignal.timeout(timeout),
+  });
+}
 
 function bundlePath() {
   return path.resolve(app.getPath('userData'), 'scripts', 'underscript.bundle.js');
@@ -50,17 +54,13 @@ async function checkForUpdates(localVersion) {
 }
 
 async function getLatestRelease() {
-  const res = await needle('get', `https://api.github.com/repos/${repository}/releases/latest`, {
-    ...needleOptions,
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'UnderScript-App',
-    },
+  const res = await request(`https://api.github.com/repos/${repository}/releases/latest`, {
+    Accept: 'application/vnd.github+json',
   });
-  if (res.statusCode !== 200) throw new Error(`Unable to find latest release (${res.statusCode})`);
-  const { tag_name: tag, assets } = res.body;
-  if (typeof tag !== 'string' || !Array.isArray(assets)) throw new Error('Unexpected release response');
-  return res.body;
+  if (res.status !== 200) throw new Error(`Unable to find latest release (${res.status})`);
+  const release = await res.json();
+  if (typeof release.tag_name !== 'string' || !Array.isArray(release.assets)) throw new Error('Unexpected release response');
+  return release;
 }
 
 function loadFiles(dir) {
@@ -85,17 +85,12 @@ async function downloadAsset(release, name) {
   const [algorithm, expected] = String(asset.digest).split(':');
   if (algorithm !== 'sha256' || !expected) throw new Error(`Release ${release.tag_name} has no checksum for ${name}`);
 
-  const res = await needle('get', asset.browser_download_url, {
-    ...needleOptions,
-    parse_response: false,
-    headers: {
-      'User-Agent': 'UnderScript-App',
-    },
-  });
-  if (res.statusCode !== 200) throw new Error(`Unable to download ${name} (${res.statusCode})`);
-  const actual = crypto.createHash('sha256').update(res.body).digest('hex');
+  const res = await request(asset.browser_download_url);
+  if (res.status !== 200) throw new Error(`Unable to download ${name} (${res.status})`);
+  const body = Buffer.from(await res.arrayBuffer());
+  const actual = crypto.createHash('sha256').update(body).digest('hex');
   if (actual !== expected.toLowerCase()) throw new Error(`Checksum mismatch for ${name}`);
-  return String(res.body);
+  return String(body);
 }
 
 async function bundleScript(depends, script) {
