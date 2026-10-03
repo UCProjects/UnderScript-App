@@ -25,7 +25,7 @@ export default async function checkVersion() {
   const localDir = process.env.LOCAL_DIR;
   if (localDir) { // Local testing takes priority
     const [depends, script] = await loadFiles(path.resolve(localDir));
-    return bundleScript(depends, script);
+    return bundleScript(depends, script, await loadResources());
   }
   return checkForUpdates(await getVersion());
 }
@@ -70,6 +70,15 @@ function loadFiles(dir) {
   ]);
 }
 
+async function loadResources() {
+  const entries = (process.env.LOCAL_RESOURCES || '').split(path.delimiter).filter(Boolean);
+  return Object.fromEntries(await Promise.all(entries.map(async (entry) => {
+    const split = entry.indexOf('=');
+    if (split < 1) throw new Error(`Invalid LOCAL_RESOURCES entry: ${entry}`);
+    return [entry.slice(0, split), await file.readFile(path.resolve(entry.slice(split + 1)), 'utf8')];
+  })));
+}
+
 async function downloadScript(release) {
   const [depends, script] = await Promise.all([
     downloadAsset(release, 'dependencies.js'),
@@ -93,7 +102,7 @@ async function downloadAsset(release, name) {
   return String(body);
 }
 
-async function bundleScript(depends, script) {
+async function bundleScript(depends, script, resources = {}) {
   const version = regex.exec(script);
   if (!version) throw new Error('Unable to determine UnderScript version');
   const GM_info = {
@@ -105,6 +114,9 @@ async function bundleScript(depends, script) {
   const bundle = [
     'function UnderScriptWrapper() {',
     `const GM_info = ${JSON.stringify(GM_info)};`,
+    ...Object.keys(resources).length
+      ? [`const GM_getResourceText = ((map) => (name) => map.get(name))(new Map(${JSON.stringify(Object.entries(resources))}));`]
+      : [],
     depends,
     // Encapsulate script code!
     '(function () {',
