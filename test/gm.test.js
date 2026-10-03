@@ -40,7 +40,12 @@ describe('gmApi', () => {
     assert.deepEqual(gmApi({}), []);
     assert.deepEqual(gmApi(meta([])), []);
     assert.deepEqual(gmApi(meta(['none'])), []);
-    assert.deepEqual(gmApi(meta(['unsafeWindow', 'GM_getResourceText'])), []);
+    assert.deepEqual(gmApi(meta(['GM_getResourceText'])), []);
+  });
+
+  it('only defines the value store when a value function is granted', () => {
+    assert.equal(gmApi(meta(['unsafeWindow'])).some((code) => code.includes('__GM_store')), false);
+    assert.equal(gmApi(meta(['GM_listValues'])).some((code) => code.includes('const __GM_store')), true);
   });
 
   it('defines only the granted functions', () => {
@@ -145,5 +150,37 @@ describe('GM_deleteValue and GM_listValues', () => {
     const { api } = fakeApp({ [id]: { old: '1' } });
     const sandbox = run(meta(all), 'GM_setValue("fresh", 2); window.out = JSON.stringify(GM_listValues().sort());', api);
     assert.equal(sandbox.out, '["fresh","old"]');
+  });
+});
+
+describe('unsafeWindow', () => {
+  it('is the page window when granted', () => {
+    const { api } = fakeApp();
+    const sandbox = run(meta(['unsafeWindow']), 'window.same = unsafeWindow === window; unsafeWindow.fromScript = "set"; window.type = typeof unsafeWindow;', api);
+    assert.equal(sandbox.same, true);
+    assert.equal(sandbox.type, 'object');
+    assert.equal(sandbox.fromScript, 'set');
+  });
+
+  it('is not defined unless granted', () => {
+    const { api } = fakeApp();
+    for (const grants of [undefined, [], ['none'], ['GM_getValue']]) {
+      const sandbox = run(meta(grants), 'window.type = typeof unsafeWindow;', api);
+      assert.equal(sandbox.type, 'undefined');
+    }
+  });
+
+  it('works together with the value functions', () => {
+    const { api } = fakeApp();
+    const sandbox = run(meta(['unsafeWindow', 'GM_setValue', 'GM_getValue']), 'GM_setValue("k", 1); window.out = [typeof unsafeWindow, GM_getValue("k")].join();', api);
+    assert.equal(sandbox.out, 'object,1');
+  });
+
+  it('matches how UnderScript detects it', () => {
+    const { api } = fakeApp();
+    const detect = 'window.picked = (typeof unsafeWindow === "object" ? unsafeWindow : globalThis) === window;';
+    assert.equal(run(meta(['unsafeWindow']), detect, api).picked, true);
+    const bare = run(meta(['none']), detect.replace('globalThis', 'window'), api);
+    assert.equal(bare.picked, true);
   });
 });

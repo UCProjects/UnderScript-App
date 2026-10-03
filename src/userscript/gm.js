@@ -36,7 +36,10 @@ const definitions = {
   __GM_store.remove(String(key));
 };`,
   GM_listValues: `const GM_listValues = () => [...__GM_store.map.keys()];`,
+  unsafeWindow: 'const unsafeWindow = window;',
 };
+
+const values = ['GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_listValues'];
 
 export function scriptId({ namespace = '', name = 'unnamed' } = {}) {
   return `${namespace}|${name}`;
@@ -45,5 +48,6 @@ export function scriptId({ namespace = '', name = 'unnamed' } = {}) {
 export function gmApi(meta) {
   const grants = meta.grants ?? [];
   const granted = Object.entries(definitions).filter(([name]) => grants.includes(name));
-  return granted.length ? [store(scriptId(meta)), ...granted.map(([, definition]) => definition)] : [];
+  const needsStore = values.some((name) => grants.includes(name));
+  return [...needsStore ? [store(scriptId(meta))] : [], ...granted.map(([, definition]) => definition)];
 }
