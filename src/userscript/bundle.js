@@ -1,9 +1,23 @@
+import { matchesUrl } from './match.js';
+
 const infoPattern = /^const GM_info = (\{.*\});$/m;
 
-export function createBundle({ version }, script, { requires = [], resources = {} } = {}) {
+export function createBundle(meta, script, { requires = [], resources = {} } = {}) {
   const GM_info = {
     scriptHandler: 'UnderScriptApp',
-    script: { version },
+    script: {
+      name: meta.name,
+      namespace: meta.namespace,
+      version: meta.version,
+      description: meta.description,
+      author: meta.author,
+      matches: meta.matches,
+      includes: meta.includes,
+      excludes: meta.excludes,
+      excludeMatches: meta.excludeMatches,
+      grants: meta.grants,
+      runAt: meta.runAt,
+    },
   };
   const names = Object.keys(resources);
   return [
@@ -24,10 +38,21 @@ export function createBundle({ version }, script, { requires = [], resources = {
   ].join('\n');
 }
 
-export function bundleVersion(bundle) {
+export function bundleInfo(bundle) {
   try {
-    return JSON.parse(infoPattern.exec(bundle)[1]).script.version;
+    return JSON.parse(infoPattern.exec(bundle)[1]).script;
   } catch (e) {
     return undefined;
   }
+}
+
+export function bundleVersion(bundle) {
+  return bundleInfo(bundle)?.version;
+}
+
+export function runsOn(bundle, url) {
+  const info = bundleInfo(bundle);
+  if (!info) return false;
+  if (!info.matches && !info.includes) return true;
+  return matchesUrl(info, url);
 }

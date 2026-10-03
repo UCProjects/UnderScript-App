@@ -5,6 +5,7 @@ import keytar from 'keytar';
 import updater from 'electron-updater';
 import contextMenu from 'electron-context-menu';
 import checkVersion, { readBundle } from './underscript.js';
+import { runsOn } from './userscript/bundle.js';
 
 const { autoUpdater } = updater;
 
@@ -189,7 +190,7 @@ ipcMain.handle('get-password', (event, username) => {
 ipcMain.handle('inject:scripts', async (event) => {
   if (!trusted(event)) return [];
   const bundle = await readBundle();
-  if (!bundle) return [];
+  if (!bundle || !runsOn(bundle, event.senderFrame.url)) return [];
   const scripts = await Promise.all(['wait.js', 'app.js', 'signin.js'].map((name) => {
     return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
   }));

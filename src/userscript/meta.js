@@ -93,6 +93,7 @@ export function parseMeta(source) {
     matches: all('match'),
     includes: all('include'),
     excludes: all('exclude'),
+    excludeMatches: all('exclude-match'),
     connects: all('connect'),
     grants: all('grant'),
     requires: all('require').filter(Boolean).map(parseTarget),

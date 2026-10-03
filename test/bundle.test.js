@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import vm from 'node:vm';
-import { bundleVersion, createBundle } from '../src/userscript/bundle.js';
+import { bundleInfo, bundleVersion, createBundle, runsOn } from '../src/userscript/bundle.js';
 
 function run(bundle) {
   const handlers = [];
@@ -102,5 +102,44 @@ describe('createBundle', () => {
     const { sandbox, handlers } = run(bundle);
     handlers[0].handler();
     assert.deepEqual(JSON.parse(sandbox.info), { scriptHandler: 'UnderScriptApp', script: { version: '9.9.9' } });
+  });
+});
+
+describe('bundle info and matching', () => {
+  const meta = {
+    name: 'Test script',
+    version: '2.0.0',
+    matches: ['https://*.example.com/*'],
+    includes: [],
+    excludes: ['https://*.example.com/skip/*'],
+    excludeMatches: [],
+    grants: ['none'],
+    runAt: 'document-body',
+  };
+
+  it('records the script details in GM_info', () => {
+    const info = bundleInfo(createBundle(meta, ''));
+    assert.deepEqual(info, meta);
+    const { sandbox, handlers } = run(createBundle(meta, 'window.seen = JSON.stringify(GM_info.script.matches);'));
+    handlers[0].handler();
+    assert.equal(sandbox.seen, '["https://*.example.com/*"]');
+  });
+
+  it('only runs on urls the script matches', () => {
+    const bundle = createBundle(meta, '');
+    assert.equal(runsOn(bundle, 'https://www.example.com/page'), true);
+    assert.equal(runsOn(bundle, 'https://www.example.com/skip/page'), false);
+    assert.equal(runsOn(bundle, 'https://other.com/'), false);
+    assert.equal(runsOn(bundle, 'not a url'), false);
+  });
+
+  it('runs bundles that predate pattern matching everywhere', () => {
+    const old = 'function UnderScriptWrapper() {\nconst GM_info = {"scriptHandler":"UnderScriptApp","script":{"version":"0.63.9"}};\n}';
+    assert.equal(runsOn(old, 'https://anything.example/'), true);
+  });
+
+  it('does not run text that is not a bundle', () => {
+    assert.equal(runsOn('console.log(1)', 'https://www.example.com/'), false);
+    assert.equal(runsOn(undefined, 'https://www.example.com/'), false);
   });
 });
