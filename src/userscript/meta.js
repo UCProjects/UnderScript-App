@@ -3,6 +3,9 @@ const linePattern = /^[ \t]*\/\/[ \t]*@(\S+)(?:[ \t]+(.*?))?[ \t]*$/;
 const resourcePattern = /^(\S+)\s+(\S+)/;
 const integrityPattern = /^(sha256|sha384|sha512)[=-](.+)$/;
 const digestSizes = { sha256: 32, sha384: 48, sha512: 64 };
+const ignoredRequires = new Set([
+  'https://raw.githubusercontent.com/UCProjects/UnderScript/master/src/checkerV2.js',
+]);
 const singles = new Set([
   'name',
   'namespace',
@@ -96,7 +99,7 @@ export function parseMeta(source) {
     excludeMatches: all('exclude-match'),
     connects: all('connect'),
     grants: all('grant'),
-    requires: all('require').filter(Boolean).map(parseTarget),
+    requires: all('require').filter(Boolean).map(parseTarget).filter(({ url }) => !ignoredRequires.has(url)),
     resources: Object.fromEntries(resources),
     values: Object.fromEntries(values),
   };

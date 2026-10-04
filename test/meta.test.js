@@ -215,6 +215,14 @@ describe('parseMeta', () => {
     });
   });
 
+  it('skips the UnderScript checker require', () => {
+    const meta = parseMeta(wrap(
+      '// @require https://raw.githubusercontent.com/UCProjects/UnderScript/master/src/checkerV2.js',
+      '// @require https://example.com/a.js',
+    ));
+    assert.deepEqual(meta.requires.map((r) => r.url), ['https://example.com/a.js']);
+  });
+
   it('parses the real UnderScript release meta', () => {
     const meta = parseMeta(readFileSync(new URL('./fixtures/underscript.meta.js', import.meta.url), 'utf8'));
     assert.equal(meta.name, 'UnderCards script');
