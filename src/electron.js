@@ -15,8 +15,11 @@ import { createSettings } from './launcher/settings.js';
 import { createLauncher } from './launcher/window.js';
 import { loadRegistry } from './userscript/registry.js';
 import { createStore } from './userscript/store.js';
+import { isOffscreen, offscreenSwitches, offscreenWindowOptions } from './offscreen.js';
 
 const { autoUpdater } = updater;
+
+offscreenSwitches.forEach(([name, value]) => app.commandLine.appendSwitch(name, value));
 
 const origin = 'https://undercards.net';
 const permissions = new Set([
@@ -40,6 +43,7 @@ function trusted(event) {
 function createWindow() {
   app.userAgentFallback = app.userAgentFallback.replace(/\s?underscript-app\/\S+/, '');
   const win = new BrowserWindow({
+    ...offscreenWindowOptions,
     webPreferences: {
       nodeIntegration: false,
       sandbox: true,
@@ -104,7 +108,7 @@ function createWindow() {
 
   win.loadURL('https://undercards.net/SignIn');
   win.setMenu(null);
-  win.maximize();
+  if (!isOffscreen) win.maximize();
 
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'keyUp') return;
