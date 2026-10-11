@@ -1,11 +1,12 @@
 import { app, BrowserWindow, dialog, shell, ipcMain } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import keytar from 'keytar';
 import updater from 'electron-updater';
 import contextMenu from 'electron-context-menu';
 import checkVersion, { readBundle } from './underscript.js';
-import { bundleInfo, runsOn } from './userscript/bundle.js';
+import { bundleInfo, injectable, runsOn } from './userscript/bundle.js';
 import { buildBundle } from './userscript/build.js';
 import { download } from './userscript/download.js';
 import { scriptId } from './userscript/gm.js';
@@ -268,7 +269,16 @@ ipcMain.handle('get-password', (event, username) => {
 
 let store;
 let installed;
-const served = new Set();
+const grants = new Map();
+
+function frameKey(event) {
+  return `${event.processId}:${event.frameId}`;
+}
+
+function scriptFor(event, token) {
+  if (!trusted(event) || typeof token !== 'string') return undefined;
+  return grants.get(frameKey(event))?.get(token);
+}
 
 function getStore() {
   store ??= createStore(path.resolve(app.getPath('userData'), 'scripts', 'values'));
@@ -287,26 +297,33 @@ ipcMain.handle('inject:scripts', async (event) => {
   if (!bundle || !runsOn(bundle, event.senderFrame.url)) return none;
   const plugins = await getInstalled().bundlesFor(event.senderFrame.url);
   const ids = [bundle, ...plugins.map((plugin) => plugin.bundle)].map((text) => scriptId(bundleInfo(text)));
-  ids.forEach((id) => served.add(id));
+  const tokens = ids.map(() => randomUUID());
+  grants.set(frameKey(event), new Map(tokens.map((token, index) => [token, ids[index]])));
   const [values, ...scripts] = await Promise.all([
-    Promise.all(ids.map(async (id) => [id, await getStore().get(id)])),
+    Promise.all(ids.map(async (id, index) => [tokens[index], await getStore().get(id)])),
     ...['wait.js', 'app.js', 'signin.js'].map((name) => {
       return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
     }),
   ]);
   return {
-    scripts: [bundle, ...scripts, ...plugins.map((plugin) => plugin.bundle)],
+    scripts: [
+      injectable(bundle, tokens[0]),
+      ...scripts,
+      ...plugins.map((plugin, index) => injectable(plugin.bundle, tokens[index + 1])),
+    ],
     values: Object.fromEntries(values),
   };
 });
 
-ipcMain.on('gm:set', (event, id, key, raw) => {
-  if (!trusted(event) || !served.has(id)) return;
+ipcMain.on('gm:set', (event, token, key, raw) => {
+  const id = scriptFor(event, token);
+  if (id === undefined) return;
   getStore().set(id, key, raw).catch(console.error);
 });
 
-ipcMain.on('gm:delete', (event, id, key) => {
-  if (!trusted(event) || !served.has(id)) return;
+ipcMain.on('gm:delete', (event, token, key) => {
+  const id = scriptFor(event, token);
+  if (id === undefined) return;
   getStore().remove(id, key).catch(console.error);
 });
 

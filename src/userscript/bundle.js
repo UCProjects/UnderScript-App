@@ -42,6 +42,24 @@ export function createBundle(meta, script, { requires = [], resources = {}, loca
   ].join('\n');
 }
 
+export function injectable(bundle, token) {
+  return [
+    '(function () {',
+    'const underscriptApp = (() => {',
+    '  const bridge = window.underscriptApp;',
+    `  const token = ${JSON.stringify(token)};`,
+    '  return Object.freeze({',
+    '    ...bridge,',
+    '    getValues: () => bridge.getValues(token),',
+    '    setValue: (id, key, raw) => bridge.setValue(token, key, raw),',
+    '    deleteValue: (id, key) => bridge.deleteValue(token, key),',
+    '  });',
+    '})();',
+    bundle,
+    '})();',
+  ].join('\n');
+}
+
 export function bundleInfo(bundle) {
   try {
     return JSON.parse(infoPattern.exec(bundle)[1]).script;
