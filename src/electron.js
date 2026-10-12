@@ -94,6 +94,15 @@ function createWindow() {
     });
   });
 
+  function showDevTools() {
+    const { webContents } = win;
+    if (webContents.isDevToolsOpened()) {
+      webContents.devToolsWebContents?.focus();
+    } else {
+      webContents.openDevTools();
+    }
+  }
+
   contextMenu({
     window: win,
     showLookUpSelection: false,
@@ -104,6 +113,9 @@ function createWindow() {
     }, {
       label: 'Manage plugins',
       click: () => getLauncher().show('manager'),
+    }, {
+      label: 'Open DevTools',
+      click: showDevTools,
     }],
   });
 
@@ -115,7 +127,7 @@ function createWindow() {
     if (input.type === 'keyUp') return;
     if (input.control && input.shift && input.key.toLowerCase() === 'i' || input.key === 'F12') {
       event.preventDefault();
-      win.webContents.openDevTools();
+      showDevTools();
     } else if (input.key === 'F5' || input.control && input.key.toLowerCase() === 'r') {
       win.reload();
     } else if (input.key === 'F11') {
