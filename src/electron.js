@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, clipboard } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import keytar from 'keytar';
@@ -84,10 +84,38 @@ function createWindow() {
     showLookUpSelection: false,
     showSearchWithGoogle: false,
     append: (actions, params, window) => [{
+      label: 'Home',
+      click: goHome,
+    }, {
+      label: 'Copy page address',
+      click: copyAddress,
+    }, {
       label: 'Toggle fullscreen',
       click: () => win.setFullScreen(!win.isFullScreen()),
     }],
   });
+
+  function goHome() {
+    win.loadURL(`${origin}/`);
+  }
+
+  function copyAddress() {
+    const url = win.webContents.getURL();
+    clipboard.writeText(url);
+    toast({ title: 'Copied page address', text: url });
+  }
+
+  function showAddress(title = win.webContents.getTitle()) {
+    const { pathname, search, hash } = new URL(win.webContents.getURL());
+    win.setTitle(`${title} - ${pathname}${search}${hash}`);
+  }
+
+  win.on('page-title-updated', (event, title) => {
+    event.preventDefault();
+    showAddress(title);
+  });
+  win.webContents.on('did-navigate', () => showAddress());
+  win.webContents.on('did-navigate-in-page', () => showAddress());
 
   win.loadURL('https://undercards.net/SignIn');
   win.setMenu(null);
@@ -102,6 +130,12 @@ function createWindow() {
       win.reload();
     } else if (input.key === 'F11') {
       win.setFullScreen(!win.isFullScreen());
+    } else if (input.alt && input.key === 'Home') {
+      event.preventDefault();
+      goHome();
+    } else if (input.control && input.key.toLowerCase() === 'l') {
+      event.preventDefault();
+      copyAddress();
     }
   });
 
