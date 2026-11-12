@@ -142,6 +142,14 @@ describe('createInstalled', () => {
     assert.equal((await createInstalled(dir).get(URL_A)).version, '2.0.0');
   });
 
+  it('returns every enabled script whatever pages it matches, in install order', async () => {
+    await installed.save({ url: URL_A, ...build('Alpha') });
+    await installed.save({ url: URL_B, ...build('Beta', [], '1.0.0', 'https://example.org/*') });
+    await installed.save({ url: 'https://example.com/c.user.js', ...build('Gamma') });
+    await installed.setEnabled('https://example.com/c.user.js', false);
+    assert.deepEqual((await installed.enabledBundles()).map((entry) => entry.url), [URL_A, URL_B]);
+  });
+
   it('only returns enabled scripts that match the page, in install order', async () => {
     await installed.save({ url: URL_A, ...build('Alpha') });
     await installed.save({ url: URL_B, ...build('Beta', [], '1.0.0', 'https://example.org/*') });

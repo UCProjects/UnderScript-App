@@ -49,6 +49,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       contextIsolation: true,
+      nodeIntegrationInSubFrames: true,
       additionalArguments: [`--app-version=${app.getVersion()}`],
     },
     icon: path.resolve(app.getAppPath(), 'src', 'uc.png'),
@@ -318,12 +319,29 @@ function getInstalled() {
   return installed;
 }
 
-ipcMain.handle('inject:scripts', async (event) => {
+function embedded(event) {
+  const frame = event.senderFrame;
+  if (!frame?.parent) return false;
+  try {
+    return new URL(frame.url).protocol === 'https:';
+  } catch (e) {
+    return false;
+  }
+}
+
+async function injectEmbedded(event) {
+  const plugins = await getInstalled().bundlesFor(event.senderFrame.url);
+  return {
+    scripts: plugins.map((plugin) => injectable(plugin.bundle, randomUUID())),
+    values: {},
+  };
+}
+
+async function injectGame(event) {
   const none = { scripts: [], values: {} };
-  if (!trusted(event)) return none;
   const bundle = await readBundle();
   if (!bundle || !runsOn(bundle, event.senderFrame.url)) return none;
-  const plugins = await getInstalled().bundlesFor(event.senderFrame.url);
+  const plugins = await getInstalled().enabledBundles();
   const ids = [bundle, ...plugins.map((plugin) => plugin.bundle)].map((text) => scriptId(bundleInfo(text)));
   const tokens = ids.map(() => randomUUID());
   grants.set(frameKey(event), new Map(tokens.map((token, index) => [token, ids[index]])));
@@ -341,6 +359,12 @@ ipcMain.handle('inject:scripts', async (event) => {
     ],
     values: Object.fromEntries(values),
   };
+}
+
+ipcMain.handle('inject:scripts', async (event) => {
+  if (trusted(event)) return injectGame(event);
+  if (embedded(event)) return injectEmbedded(event);
+  return { scripts: [], values: {} };
 });
 
 ipcMain.on('gm:set', (event, token, key, raw) => {

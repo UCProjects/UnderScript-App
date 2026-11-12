@@ -139,6 +139,10 @@ export function createInstalled(dir) {
       return true;
     }),
 
+    async enabledBundles() {
+      return (await load()).filter((record) => record.enabled).map(({ url, id, bundle }) => ({ url, id, bundle }));
+    },
+
     async bundlesFor(href) {
       return (await load())
         .filter((record) => record.enabled && runsOn(record.bundle, href))
