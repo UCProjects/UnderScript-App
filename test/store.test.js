@@ -20,6 +20,15 @@ describe('createStore', () => {
     assert.deepEqual(await store.get('unknown'), {});
   });
 
+  it('keeps keys that collide with object internals', async () => {
+    await store.set('a|One', '__proto__', '1');
+    await store.set('a|One', 'toString', '2');
+    await store.flush();
+    assert.deepEqual(Object.entries(await createStore(dir).get('a|One')).sort(), [['__proto__', '1'], ['toString', '2']]);
+    await store.remove('a|Two', 'toString');
+    assert.deepEqual(await store.get('a|Two'), {});
+  });
+
   it('stores values as raw json strings per script', async () => {
     await store.set('a|One', 'count', '5');
     await store.set('a|One', 'object', '{"x":[1,2]}');

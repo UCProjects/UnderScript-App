@@ -36,9 +36,9 @@ export function createStore(dir) {
   async function read(id) {
     try {
       const { values } = JSON.parse(await file.readFile(locate(id), 'utf8'));
-      return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, JSON.stringify(value)]));
+      return Object.assign(Object.create(null), Object.fromEntries(Object.entries(values).map(([key, value]) => [key, JSON.stringify(value)])));
     } catch (e) {
-      return {};
+      return Object.create(null);
     }
   }
 
