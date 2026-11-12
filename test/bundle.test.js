@@ -150,6 +150,13 @@ describe('createBundle', () => {
   });
 });
 
+describe('noframes', () => {
+  it('is recorded in the bundle info', () => {
+    assert.equal(bundleInfo(createBundle({ version: '1', noframes: true }, '')).noframes, true);
+    assert.equal(bundleInfo(createBundle({ version: '1' }, '')).noframes, undefined);
+  });
+});
+
 describe('bundle info and matching', () => {
   const meta = {
     name: 'Test script',

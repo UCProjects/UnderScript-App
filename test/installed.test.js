@@ -155,6 +155,17 @@ describe('createInstalled', () => {
     assert.deepEqual((await installed.enabledBundles()).map((entry) => entry.url), [URL_A, URL_B]);
   });
 
+  it('leaves scripts marked noframes out of subframes only', async () => {
+    await installed.save({ url: URL_A, ...build('Alpha') });
+    await installed.save({ url: URL_B, ...build('Beta', ['// @noframes']) });
+    const urls = (list) => list.map((entry) => entry.url);
+    assert.deepEqual(urls(await installed.enabledBundles()), [URL_A, URL_B]);
+    assert.deepEqual(urls(await installed.enabledBundles({ subframe: false })), [URL_A, URL_B]);
+    assert.deepEqual(urls(await installed.enabledBundles({ subframe: true })), [URL_A]);
+    assert.deepEqual(urls(await installed.bundlesFor('https://undercards.net/')), [URL_A, URL_B]);
+    assert.deepEqual(urls(await installed.bundlesFor('https://undercards.net/', { subframe: true })), [URL_A]);
+  });
+
   it('only returns enabled scripts that match the page, in install order', async () => {
     await installed.save({ url: URL_A, ...build('Alpha') });
     await installed.save({ url: URL_B, ...build('Beta', [], '1.0.0', 'https://example.org/*') });

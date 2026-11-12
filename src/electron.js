@@ -345,7 +345,7 @@ function embedded(event) {
 }
 
 async function injectEmbedded(event) {
-  const plugins = await getInstalled().bundlesFor(event.senderFrame.url);
+  const plugins = await getInstalled().bundlesFor(event.senderFrame.url, { subframe: true });
   return {
     scripts: plugins.map((plugin) => injectable(plugin.bundle, randomUUID())),
     values: {},
@@ -356,7 +356,7 @@ async function injectGame(event) {
   const none = { scripts: [], values: {} };
   const bundle = await readBundle();
   if (!bundle || !runsOn(bundle, event.senderFrame.url)) return none;
-  const plugins = await getInstalled().enabledBundles();
+  const plugins = await getInstalled().enabledBundles({ subframe: Boolean(event.senderFrame.parent) });
   const infos = [bundle, ...plugins.map((plugin) => plugin.bundle)].map((text) => bundleInfo(text));
   const ids = infos.map((info) => scriptId(info));
   const tokens = ids.map(() => randomUUID());

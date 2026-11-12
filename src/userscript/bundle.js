@@ -19,6 +19,7 @@ export function createBundle(meta, script, { requires = [], resources = {}, loca
       excludeMatches: meta.excludeMatches,
       grants: meta.grants,
       connects: meta.connects,
+      noframes: meta.noframes,
       runAt: meta.runAt,
     },
   };
@@ -76,6 +77,7 @@ const probeMeta = {
   excludeMatches: ['probe'],
   grants: ['GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_listValues', 'GM_getResourceText', 'unsafeWindow', 'GM_xmlhttpRequest', 'GM.xmlHttpRequest'],
   connects: ['probe'],
+  noframes: true,
   runAt: 'document-idle',
 };
 

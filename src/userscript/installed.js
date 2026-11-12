@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { promises as file } from 'fs';
 import path from 'path';
-import { bundleFormat, runsOn } from './bundle.js';
+import { bundleFormat, bundleInfo, runsOn } from './bundle.js';
 
 function comparable(meta) {
   const values = {};
@@ -46,6 +46,7 @@ export function createInstalled(dir) {
   const folder = (url) => path.join(dir, crypto.createHash('sha256').update(url).digest('hex'));
   const strip = ({ bundle, ...record }) => record;
   const pick = ({ url, id, bundle }) => ({ url, id, bundle });
+  const allowedIn = ({ bundle }, subframe) => !subframe || !bundleInfo(bundle)?.noframes;
 
   async function write(target, text) {
     await file.writeFile(`${target}.tmp`, text);
@@ -197,13 +198,13 @@ export function createInstalled(dir) {
       return true;
     }),
 
-    async enabledBundles() {
-      return (await load()).filter((record) => record.enabled).map(pick);
+    async enabledBundles({ subframe = false } = {}) {
+      return (await load()).filter((record) => record.enabled && allowedIn(record, subframe)).map(pick);
     },
 
-    async bundlesFor(href) {
+    async bundlesFor(href, { subframe = false } = {}) {
       return (await load())
-        .filter((record) => record.enabled && runsOn(record.bundle, href))
+        .filter((record) => record.enabled && allowedIn(record, subframe) && runsOn(record.bundle, href))
         .map(pick);
     },
   };
