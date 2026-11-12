@@ -15,6 +15,7 @@ function element(tag, props = {}, ...children) {
 function row(plugin) {
   const toggle = element('input', { type: 'checkbox', checked: plugin.enabled, title: 'Enabled' });
   const item = element('li', { className: plugin.enabled ? '' : 'disabled' });
+  item.dataset.url = plugin.url;
   toggle.addEventListener('change', async () => {
     await window.launcher.setEnabled(plugin.url, toggle.checked);
     item.classList.toggle('disabled', !toggle.checked);
@@ -47,12 +48,24 @@ function row(plugin) {
   return item;
 }
 
+async function markWarnings() {
+  const warnings = await window.launcher.warnings();
+  list.querySelectorAll('.warning').forEach((node) => node.remove());
+  for (const item of list.querySelectorAll('li[data-url]')) {
+    const warning = warnings.find(({ url }) => url === item.dataset.url);
+    if (!warning) continue;
+    const text = warning.kind === 'warn' ? warning.message : 'No longer in the community plugin list';
+    item.querySelector('.info').append(element('div', { className: 'warning', textContent: text }));
+  }
+}
+
 async function render() {
   const plugins = await window.launcher.list();
   summary.textContent = plugins.length
     ? `${plugins.length} plugin${plugins.length === 1 ? '' : 's'} installed. Untick a plugin to turn it off.`
     : 'No plugins installed.';
   list.replaceChildren(...plugins.length ? plugins.map(row) : [element('li', { className: 'empty' }, 'Nothing here yet.')]);
+  markWarnings().catch(() => {});
 }
 
 startup.addEventListener('change', () => window.launcher.setShowAtStartup(startup.checked));

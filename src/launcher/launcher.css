@@ -90,6 +90,12 @@ li input[type='checkbox'] {
   font-size: 12px;
 }
 
+.warning {
+  margin-top: 2px;
+  color: #f0ad4e;
+  font-size: 12px;
+}
+
 button {
   padding: 7px 16px;
   color: var(--text);

@@ -23,10 +23,15 @@ function release(url) {
 export function parseRegistry(data) {
   if (!Array.isArray(data)) throw new Error('Invalid registry');
   return data.flatMap((entry) => {
-    const { name, author, updateURL, downloadURL } = entry ?? {};
+    const { name, author, warn, updateURL, downloadURL } = entry ?? {};
     const url = secure([downloadURL, updateURL].find((value) => typeof value === 'string'));
     if (typeof name !== 'string' || !name || !url?.pathname.endsWith('.user.js')) return [];
-    return [{ name, author: typeof author === 'string' ? author : undefined, url: url.href }];
+    return [{
+      name,
+      author: typeof author === 'string' ? author : undefined,
+      warn: typeof warn === 'string' && warn.trim() ? warn.trim() : undefined,
+      url: url.href,
+    }];
   });
 }
 
@@ -38,6 +43,16 @@ export function findEntry(entries, clicked) {
     if (entry.url === target.href) return true;
     const entryRelease = release(new URL(entry.url));
     return Boolean(entryRelease) && entryRelease === targetRelease;
+  });
+}
+
+export function registryWarnings(entries, records) {
+  if (!entries.length) return [];
+  return records.flatMap(({ url, name, source = 'registry' }) => {
+    if (source !== 'registry') return [];
+    const entry = findEntry(entries, url);
+    if (!entry) return [{ url, name, kind: 'removed' }];
+    return entry.warn ? [{ url, name, kind: 'warn', message: entry.warn }] : [];
   });
 }
 

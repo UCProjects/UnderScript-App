@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 
-export function createLauncher({ getInstalled, settings }) {
+export function createLauncher({ getInstalled, getWarnings, settings }) {
   let current;
   let finish;
 
@@ -11,6 +11,10 @@ export function createLauncher({ getInstalled, settings }) {
     if (!isCurrent(event)) return [];
     const records = await getInstalled().list();
     return records.map(({ url, name, version, enabled }) => ({ url, name, version, enabled }));
+  });
+
+  ipcMain.handle('plugins:warnings', async (event) => {
+    return isCurrent(event) ? getWarnings() : [];
   });
 
   ipcMain.handle('plugins:enable', async (event, url, enabled) => {

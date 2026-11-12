@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
-import { findEntry, loadRegistry, parseRegistry, registryURL } from '../src/userscript/registry.js';
+import { findEntry, loadRegistry, parseRegistry, registryURL, registryWarnings } from '../src/userscript/registry.js';
 
 const GIST = 'https://gist.github.com/feildmaster/685b7cc68f747d5d1cce5de59cec2ef4/raw/playerInfo.user.js';
 const RAW = 'https://raw.githubusercontent.com/theWiza2341/Wizascript/refs/heads/main/wizascript.user.js';
@@ -94,6 +94,49 @@ describe('findEntry', () => {
 
   it('does not treat a registered raw or gist url as a release', () => {
     assert.equal(findEntry(entries, 'https://github.com/theWiza2341/Wizascript/releases/download/v1/wizascript.user.js'), undefined);
+  });
+});
+
+describe('registryWarnings', () => {
+  const warned = parseRegistry([
+    { name: 'Player Info', updateURL: GIST },
+    { name: 'PrettyCards', updateURL: RELEASE, warn: '  Unmaintained  ' },
+  ]);
+
+  it('keeps a trimmed warn message and drops blank or non-string ones', () => {
+    const [blank, text, other] = parseRegistry([
+      { name: 'A', updateURL: 'https://example.com/a.user.js', warn: '  ' },
+      { name: 'B', updateURL: 'https://example.com/b.user.js', warn: ' Careful ' },
+      { name: 'C', updateURL: 'https://example.com/c.user.js', warn: 5 },
+    ]);
+    assert.equal(blank.warn, undefined);
+    assert.equal(text.warn, 'Careful');
+    assert.equal(other.warn, undefined);
+  });
+
+  it('flags plugins that left the registry and plugins with a warn message', () => {
+    const records = [
+      { url: GIST, name: 'Player Info' },
+      { url: RELEASE, name: 'PrettyCards' },
+      { url: RAW, name: 'Wizascript' },
+    ];
+    assert.deepEqual(registryWarnings(warned, records), [
+      { url: RELEASE, name: 'PrettyCards', kind: 'warn', message: 'Unmaintained' },
+      { url: RAW, name: 'Wizascript', kind: 'removed' },
+    ]);
+  });
+
+  it('follows a tagged release of a listed plugin', () => {
+    const url = 'https://github.com/elytrafae/prettycards/releases/download/v2.16.4/prettycards.user.js';
+    assert.deepEqual(registryWarnings(warned, [{ url, name: 'PrettyCards' }]).map(({ kind }) => kind), ['warn']);
+  });
+
+  it('skips plugins that were not installed from the registry', () => {
+    assert.deepEqual(registryWarnings(warned, [{ url: RAW, name: 'Mine', source: 'local' }]), []);
+  });
+
+  it('flags nothing when the registry is empty', () => {
+    assert.deepEqual(registryWarnings([], [{ url: RAW, name: 'Wizascript' }]), []);
   });
 });
 

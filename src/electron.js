@@ -14,7 +14,7 @@ import { createInstaller } from './userscript/install.js';
 import { createInstalled } from './userscript/installed.js';
 import { createSettings } from './launcher/settings.js';
 import { createLauncher } from './launcher/window.js';
-import { loadRegistry } from './userscript/registry.js';
+import { loadRegistry, registryWarnings } from './userscript/registry.js';
 import { createStore } from './userscript/store.js';
 import { isOffscreen, offscreenSwitches, offscreenWindowOptions } from './offscreen.js';
 
@@ -246,6 +246,14 @@ function createWindow() {
     navigate(event, url);
   });
   win.webContents.on('will-redirect', navigate);
+  win.webContents.once('did-finish-load', async () => {
+    const { length } = await getWarnings();
+    if (!length) return;
+    toast({
+      title: 'Plugin warning',
+      text: `${length} installed plugin${length === 1 ? ' needs' : 's need'} a look. Open the plugin manager with Ctrl+Shift+P`,
+    });
+  });
   win.webContents.setWindowOpenHandler(({ url }) => {
     open(url);
     return { action: 'deny' };
@@ -295,6 +303,14 @@ function scriptFor(event, token) {
 function getStore() {
   store ??= createStore(path.resolve(app.getPath('userData'), 'scripts', 'values'));
   return store;
+}
+
+async function getWarnings() {
+  try {
+    return registryWarnings(await loadRegistry(), await getInstalled().list());
+  } catch (e) {
+    return [];
+  }
 }
 
 function getInstalled() {
@@ -362,7 +378,7 @@ let launcherSettings;
 
 function getLauncher() {
   launcherSettings ??= createSettings(path.resolve(app.getPath('userData'), 'scripts', 'launcher.json'));
-  launcher ??= createLauncher({ getInstalled, settings: launcherSettings });
+  launcher ??= createLauncher({ getInstalled, getWarnings, settings: launcherSettings });
   return launcher;
 }
 

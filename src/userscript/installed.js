@@ -60,7 +60,7 @@ export function createInstalled(dir) {
       try {
         const record = JSON.parse(await file.readFile(path.join(dir, name), 'utf8'));
         const bundle = await file.readFile(path.join(dir, name.replace(/\.json$/, '.js')), 'utf8');
-        if (typeof record?.url === 'string') records.push({ ...record, bundle });
+        if (typeof record?.url === 'string') records.push({ ...record, source: record.source ?? 'registry', bundle });
       } catch (e) {
         continue;
       }
@@ -97,7 +97,7 @@ export function createInstalled(dir) {
       return found && strip(found);
     },
 
-    save: ({ url, name, id, version, meta, bundle }) => serialize(async () => {
+    save: ({ url, name, id, version, meta, bundle, source = 'registry' }) => serialize(async () => {
       const records = await load();
       const existing = records.find((record) => record.url === url);
       const now = new Date().toISOString();
@@ -105,6 +105,7 @@ export function createInstalled(dir) {
         url,
         name,
         id,
+        source: existing ? existing.source : source,
         version,
         meta,
         bundle,

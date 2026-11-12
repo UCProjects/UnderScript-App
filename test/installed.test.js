@@ -115,6 +115,19 @@ describe('createInstalled', () => {
     assert.equal((await again.bundlesFor('https://undercards.net/Game'))[0].url, URL_A);
   });
 
+  it('records where a script came from and treats old records as registry installs', async () => {
+    assert.equal((await installed.save({ url: URL_A, ...build('Alpha') })).source, 'registry');
+    assert.equal((await installed.save({ url: URL_B, ...build('Beta'), source: 'local' })).source, 'local');
+    assert.equal((await installed.save({ url: URL_B, ...build('Beta', [], '2.0.0') })).source, 'local');
+    const base = path.join(dir, (await file.readdir(dir)).find((name) => name.endsWith('.json')));
+    const record = JSON.parse(await file.readFile(base, 'utf8'));
+    delete record.source;
+    await file.writeFile(base, JSON.stringify(record));
+    const sources = (await createInstalled(dir).list()).map(({ source }) => source);
+    assert.ok(sources.includes('registry'));
+    assert.equal(sources.length, 2);
+  });
+
   it('keeps the enabled state, order and install time when updating', async () => {
     await installed.save({ url: URL_A, ...build('Alpha') });
     await installed.save({ url: URL_B, ...build('Beta') });

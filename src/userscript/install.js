@@ -63,6 +63,7 @@ export function createInstaller({ loadRegistry, fetchScript, build, installed, c
         url: entry.url,
         name: meta.name,
         id: scriptId(meta),
+        source: 'registry',
         version: meta.version,
         meta: built.meta,
         bundle: built.bundle,
