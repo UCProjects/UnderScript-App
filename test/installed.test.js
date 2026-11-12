@@ -168,6 +168,22 @@ describe('createInstalled', () => {
     assert.equal((await installed.reportable())[0].name, 'Alpha');
   });
 
+  it('keeps an icon with the plugin, and keeps it when the plugin is saved again without one', async () => {
+    const icon = { type: 'image/png', data: Buffer.from([1, 2, 3]) };
+    await installed.save({ url: URL_A, ...build('Alpha'), icon });
+    await installed.save({ url: URL_B, ...build('Beta') });
+    const expected = `data:image/png;base64,${icon.data.toString('base64')}`;
+    assert.equal(await installed.iconOf(URL_A), expected);
+    assert.equal(await createInstalled(dir).iconOf(URL_A), expected);
+    assert.equal(await installed.iconOf(URL_B), undefined);
+    assert.equal(await installed.iconOf('https://example.com/none.user.js'), undefined);
+    await installed.save({ url: URL_A, ...build('Alpha', [], '2.0.0') });
+    assert.equal(await installed.iconOf(URL_A), expected);
+    const next = { type: 'image/gif', data: Buffer.from('GIF89a') };
+    await installed.save({ url: URL_A, ...build('Alpha', [], '3.0.0'), icon: next });
+    assert.equal(await installed.iconOf(URL_A), `data:image/gif;base64,${next.data.toString('base64')}`);
+  });
+
   it('leaves scripts marked noframes out of subframes only', async () => {
     await installed.save({ url: URL_A, ...build('Alpha') });
     await installed.save({ url: URL_B, ...build('Beta', ['// @noframes']) });

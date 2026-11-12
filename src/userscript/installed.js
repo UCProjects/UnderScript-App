@@ -131,6 +131,17 @@ export function createInstalled(dir) {
       return found && strip(found);
     },
 
+    async iconOf(url) {
+      const record = (await load()).find((entry) => entry.url === url);
+      if (!record?.iconType) return undefined;
+      try {
+        const data = await file.readFile(path.join(folder(url), 'icon.bin'));
+        return `data:${record.iconType};base64,${data.toString('base64')}`;
+      } catch (e) {
+        return undefined;
+      }
+    },
+
     async stale(format = bundleFormat) {
       return (await load()).filter((record) => record.format !== format).map(strip);
     },
@@ -157,16 +168,18 @@ export function createInstalled(dir) {
       };
     },
 
-    save: ({ url, name, id, version, meta, bundle, script = '', assets = { requires: [], resources: {} }, format = bundleFormat, source = 'registry', pluginName = name }) => serialize(async () => {
+    save: ({ url, name, id, version, meta, bundle, script = '', assets = { requires: [], resources: {} }, format = bundleFormat, source = 'registry', pluginName = name, icon }) => serialize(async () => {
       const records = await load();
       const existing = records.find((record) => record.url === url);
       const now = new Date().toISOString();
       const manifest = await persistAssets(url, script, assets);
+      if (icon) await write(path.join(folder(url), 'icon.bin'), icon.data);
       const record = {
         url,
         name,
         pluginName,
         id,
+        iconType: icon ? icon.type : existing?.iconType,
         source: existing ? existing.source : source,
         version,
         format,

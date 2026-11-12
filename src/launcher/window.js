@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'path';
+import { pluginLinks } from '../userscript/links.js';
 
 export function createLauncher({ getInstalled, getWarnings, reinstall, settings }) {
   let current;
@@ -10,7 +11,24 @@ export function createLauncher({ getInstalled, getWarnings, reinstall, settings 
   ipcMain.handle('plugins:list', async (event) => {
     if (!isCurrent(event)) return [];
     const records = await getInstalled().list();
-    return records.map(({ url, name, version, enabled, source }) => ({ url, name, version, enabled, source }));
+    return Promise.all(records.map(async ({ url, name, pluginName, version, enabled, source, meta }) => ({
+      url,
+      name: pluginName ?? name,
+      version,
+      enabled,
+      source,
+      links: pluginLinks({ url, meta }),
+      icon: await getInstalled().iconOf(url),
+    })));
+  });
+
+  ipcMain.handle('plugins:open-link', async (event, url, kind) => {
+    if (!isCurrent(event) || typeof url !== 'string' || !['website', 'source', 'support'].includes(kind)) return false;
+    const record = await getInstalled().get(url);
+    const link = record && pluginLinks(record)[kind];
+    if (!link) return false;
+    await shell.openExternal(link);
+    return true;
   });
 
   ipcMain.handle('plugins:warnings', async (event) => {
@@ -53,6 +71,9 @@ export function createLauncher({ getInstalled, getWarnings, reinstall, settings 
   });
 
   return {
+    close() {
+      if (current && !current.isDestroyed()) current.close();
+    },
     show(mode = 'launcher') {
       if (current && !current.isDestroyed()) {
         current.focus();
@@ -71,9 +92,6 @@ export function createLauncher({ getInstalled, getWarnings, reinstall, settings 
           sandbox: true,
           contextIsolation: true,
           nodeIntegration: false,
-    close() {
-      if (current && !current.isDestroyed()) current.close();
-    },
           preload: path.resolve(app.getAppPath(), 'src', 'preload', 'launcher.cjs'),
         },
       });

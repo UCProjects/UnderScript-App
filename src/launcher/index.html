@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src data:">
   <title>UnderScript Plugins</title>
   <link rel="stylesheet" href="launcher.css">
 </head>
@@ -18,6 +18,7 @@
     <label id="startup-label"><input type="checkbox" id="startup"> Show this screen when the app starts</label>
     <button id="start" type="button"></button>
   </footer>
+  <script src="initials.js"></script>
   <script src="launcher.js"></script>
 </body>
 </html>

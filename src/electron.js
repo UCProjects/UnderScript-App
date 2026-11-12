@@ -10,6 +10,7 @@ import { bundleInfo, injectable, runsOn } from './userscript/bundle.js';
 import { buildBundle } from './userscript/build.js';
 import { download } from './userscript/download.js';
 import { scriptId } from './userscript/gm.js';
+import { fetchIcon } from './userscript/icon.js';
 import { createInstaller, describeResult } from './userscript/install.js';
 import { createInstalled } from './userscript/installed.js';
 import { createSettings } from './launcher/settings.js';
@@ -59,9 +60,9 @@ function createWindow() {
     icon: path.resolve(app.getAppPath(), 'src', 'uc.png'),
   });
 
-  ['inject', 'rememberMe', 'zoom'].forEach((name) => {
   win.on('closed', () => launcher?.close());
 
+  ['inject', 'rememberMe', 'zoom'].forEach((name) => {
     win.webContents.session.registerPreloadScript({
       type: 'frame',
       filePath: path.resolve(app.getAppPath(), 'src', 'preload', `${name}.cjs`),
@@ -346,6 +347,7 @@ function getInstaller() {
     loadRegistry,
     fetchScript: (url) => download({ url }),
     build: (source) => buildBundle(source),
+    fetchIcon,
     installed: getInstalled(),
     confirm: confirmInstall,
   });

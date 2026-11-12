@@ -126,6 +126,70 @@ describe('describeResult', () => {
   });
 });
 
+describe('install icons', () => {
+  const png = { type: 'image/png', data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2]) };
+
+  function withIcons(fetchIcon) {
+    const asked = [];
+    const build = async (text) => {
+      const meta = parseMeta(text);
+      return { meta, bundle: createBundle(meta, text) };
+    };
+    return {
+      asked,
+      install: createInstaller({
+        loadRegistry: async () => registry,
+        fetchScript: async () => source(['// @icon https://example.com/icon.png']),
+        build,
+        installed,
+        confirm: async () => true,
+        fetchIcon: async (url) => {
+          asked.push(url);
+          return fetchIcon(url);
+        },
+      }),
+    };
+  }
+
+  it('fetches the icon the script names after it is approved and keeps it with the plugin', async () => {
+    const { install, asked } = withIcons(async () => png);
+    assert.equal((await install(RELEASE)).status, 'installed');
+    assert.deepEqual(asked, ['https://example.com/icon.png']);
+    assert.equal(await installed.iconOf(RELEASE), `data:image/png;base64,${png.data.toString('base64')}`);
+  });
+
+  it('installs the plugin without an icon when the icon cannot be fetched', async () => {
+    for (const fetchIcon of [async () => undefined, async () => { throw new Error('offline'); }]) {
+      await installed.remove(RELEASE);
+      const { install } = withIcons(fetchIcon);
+      assert.equal((await install(RELEASE)).status, 'installed');
+      assert.equal(await installed.iconOf(RELEASE), undefined);
+    }
+  });
+
+  it('does not ask for an icon when the script names none or the install is declined', async () => {
+    const noIcon = createInstaller({
+      loadRegistry: async () => registry,
+      fetchScript: async () => source(),
+      build: async (text) => ({ meta: parseMeta(text), bundle: 'b' }),
+      installed,
+      confirm: async () => true,
+      fetchIcon: async () => { throw new Error('should not be called'); },
+    });
+    assert.equal((await noIcon(RELEASE)).status, 'installed');
+    await installed.remove(RELEASE);
+    const declined = createInstaller({
+      loadRegistry: async () => registry,
+      fetchScript: async () => source(['// @icon https://example.com/icon.png']),
+      build: async (text) => ({ meta: parseMeta(text), bundle: 'b' }),
+      installed,
+      confirm: async () => false,
+      fetchIcon: async () => { throw new Error('should not be called'); },
+    });
+    assert.equal((await declined(RELEASE)).status, 'cancelled');
+  });
+});
+
 describe('install', () => {
   it('refuses links the registry does not list, without downloading', async () => {
     const result = await installer('https://evil.example/prettycards.user.js');
@@ -146,10 +210,11 @@ describe('install', () => {
   it('asks before installing a new script, and installs it when approved', async () => {
     const result = await installer(RELEASE);
     assert.equal(result.status, 'installed');
+    assert.equal(result.name, 'PrettyCards');
     assert.equal(calls.confirm.length, 1);
     const [request] = calls.confirm;
     assert.equal(request.kind, 'new');
-    assert.equal(request.name, 'Test Plugin');
+    assert.equal(request.name, 'PrettyCards');
     assert.equal(request.version, '1.0.0');
     assert.deepEqual(request.info.permissions, [{ text: 'Save and read its own data', names: ['GM_getValue'] }]);
     assert.deepEqual(request.changes, []);
@@ -194,6 +259,7 @@ describe('install', () => {
     scripts.set(RELEASE, source(['// @grant GM_xmlhttpRequest', '// @connect evil.example'], '2.0.0'));
     const result = await installer(RELEASE);
     assert.equal(result.status, 'updated');
+    assert.equal(result.name, 'PrettyCards');
     const [request] = calls.confirm;
     assert.equal(request.kind, 'changed');
     assert.equal(request.previousVersion, '1.0.0');

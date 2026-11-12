@@ -44,7 +44,7 @@ export function describeResult({ status, name, version, previousVersion, error }
   };
 }
 
-export function createInstaller({ loadRegistry, fetchScript, build, installed, confirm }) {
+export function createInstaller({ loadRegistry, fetchScript, build, installed, confirm, fetchIcon = async () => undefined }) {
   const running = new Map();
 
   async function run(entry) {
@@ -65,7 +65,7 @@ export function createInstaller({ loadRegistry, fetchScript, build, installed, c
       const previous = existing ? await installed.assetsOf(entry.url).then((stored) => stored?.script || undefined, () => undefined) : undefined;
       const approved = await confirm({
         kind: existing ? 'changed' : 'new',
-        name: meta.name,
+        name: entry.name,
         version: meta.version,
         previousVersion: existing?.version,
         info: scriptInfo(meta, entry),
@@ -78,6 +78,8 @@ export function createInstaller({ loadRegistry, fetchScript, build, installed, c
 
     try {
       const built = await build(source);
+      const iconURL = meta.icon ?? meta.values?.iconURL?.[0];
+      const icon = iconURL ? await Promise.resolve(fetchIcon(iconURL)).catch(() => undefined) : undefined;
       await installed.save({
         url: entry.url,
         name: meta.name,
@@ -89,11 +91,12 @@ export function createInstaller({ loadRegistry, fetchScript, build, installed, c
         bundle: built.bundle,
         script: source,
         assets: built.assets,
+        icon,
       });
     } catch (error) {
       return { status: 'failed', entry, error };
     }
-    return { status: existing ? 'updated' : 'installed', entry, name: meta.name, version: meta.version, previousVersion: existing?.version };
+    return { status: existing ? 'updated' : 'installed', entry, name: entry.name, version: meta.version, previousVersion: existing?.version };
   }
 
   return async function install(clicked) {

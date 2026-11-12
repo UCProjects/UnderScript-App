@@ -22,6 +22,75 @@ function describe({ status, version, previousVersion, message }) {
   return message ?? 'The plugin could not be reinstalled';
 }
 
+const svgNamespace = 'http://www.w3.org/2000/svg';
+const symbols = {
+  globe: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M3 12h18' }], ['path', { d: 'M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18' }]],
+  code: [['path', { d: 'M8 7l-5 5l5 5M16 7l5 5l-5 5M14 4l-4 16' }]],
+  bug: [
+    ['ellipse', { cx: 12, cy: 14, rx: 5, ry: 6.5 }],
+    ['path', { d: 'M9 7.5a3 3 0 0 1 6 0' }],
+    ['path', { d: 'M12 7.5v13' }],
+    ['path', { d: 'M7 11H3M7.2 15.5L3.5 17.5M7.5 8L4.5 5.5' }],
+    ['path', { d: 'M17 11h4M16.8 15.5l3.7 2M16.5 8l3-2.5' }],
+  ],
+};
+
+function symbol(name) {
+  const svg = document.createElementNS(svgNamespace, 'svg');
+  for (const [key, value] of Object.entries({ viewBox: '0 0 24 24', width: 16, height: 16, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })) {
+    svg.setAttribute(key, value);
+  }
+  for (const [tag, attributes] of symbols[name]) {
+    const part = document.createElementNS(svgNamespace, tag);
+    Object.entries(attributes).forEach(([key, value]) => part.setAttribute(key, value));
+    svg.append(part);
+  }
+  return svg;
+}
+
+const tooltip = element('div', { className: 'tooltip', hidden: true, role: 'tooltip' });
+document.body.append(tooltip);
+
+function hideTooltip() {
+  tooltip.hidden = true;
+}
+
+function attachTooltip(target, title, detail) {
+  function show() {
+    tooltip.replaceChildren(
+      element('div', { className: 'tip-title', textContent: title }),
+      element('div', { className: 'tip-detail', textContent: detail }));
+    tooltip.hidden = false;
+    const box = target.getBoundingClientRect();
+    const margin = 8;
+    const left = Math.min(Math.max(margin, box.left + box.width / 2 - tooltip.offsetWidth / 2), window.innerWidth - tooltip.offsetWidth - margin);
+    const below = box.bottom + margin;
+    const top = below + tooltip.offsetHeight > window.innerHeight - margin ? box.top - tooltip.offsetHeight - margin : below;
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+  target.addEventListener('mouseenter', show);
+  target.addEventListener('focus', show);
+  target.addEventListener('mouseleave', hideTooltip);
+  target.addEventListener('blur', hideTooltip);
+  target.addEventListener('click', hideTooltip);
+}
+
+function linkButton(plugin, kind, label) {
+  const target = plugin.links?.[kind];
+  if (!target) return [];
+  const button = element('button', { type: 'button', className: 'linkbutton' }, symbol({ website: 'globe', source: 'code', support: 'bug' }[kind]));
+  button.setAttribute('aria-label', label);
+  attachTooltip(button, label, target);
+  button.addEventListener('click', () => window.launcher.openLink(plugin.url, kind));
+  return [button];
+}
+
+function pluginIcon(plugin) {
+  if (plugin.icon) return element('img', { className: 'plugin-icon', src: plugin.icon, alt: '' });
+  return element('div', { className: 'plugin-icon placeholder', textContent: initials(plugin.name) });
+}
+
 function row(plugin) {
   const toggle = element('input', { type: 'checkbox', checked: plugin.enabled, title: 'Enabled' });
   const item = element('li', { className: plugin.enabled ? '' : 'disabled' });
@@ -63,9 +132,14 @@ function row(plugin) {
 
   item.append(
     toggle,
+    pluginIcon(plugin),
     element('div', { className: 'info' },
       element('div', { className: 'name', textContent: plugin.name }),
-      element('div', { className: 'version', textContent: `v${plugin.version}` }),
+      element('div', { className: 'sub' },
+        element('span', { className: 'version', textContent: `v${plugin.version}` }),
+        ...linkButton(plugin, 'website', 'Website'),
+        ...linkButton(plugin, 'source', 'Source'),
+        ...linkButton(plugin, 'support', 'Report a problem or get support')),
       status),
     ...plugin.source === 'registry' ? [reinstall] : [],
     remove,
@@ -93,6 +167,7 @@ async function render() {
   markWarnings().catch(() => {});
 }
 
+document.querySelector('main').addEventListener('scroll', hideTooltip);
 startup.addEventListener('change', () => window.launcher.setShowAtStartup(startup.checked));
 start.addEventListener('click', () => window.launcher.done());
 document.addEventListener('keydown', (event) => {

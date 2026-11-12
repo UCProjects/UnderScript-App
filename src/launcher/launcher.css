@@ -153,3 +153,70 @@ footer {
   color: var(--muted);
   text-align: center;
 }
+
+.plugin-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.plugin-icon.placeholder {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background: var(--background);
+  border: 1px solid var(--line);
+  font-weight: 600;
+}
+
+.sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button.linkbutton {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 4px;
+}
+
+button.linkbutton:hover,
+button.linkbutton:focus-visible {
+  color: var(--accent);
+  background: none;
+  outline: none;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 10;
+  max-width: 340px;
+  padding: 6px 10px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.tip-title {
+  font-weight: 600;
+}
+
+.tip-detail {
+  margin-top: 2px;
+  color: var(--muted);
+  font: 11.5px/1.4 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  overflow-wrap: anywhere;
+}
