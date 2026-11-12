@@ -129,6 +129,7 @@ describe('install', () => {
     assert.equal(record.name, 'Test Plugin');
     assert.equal(record.id, 'https://example.com/|Test Plugin');
     assert.equal(record.enabled, true);
+    assert.equal(record.pluginName, 'PrettyCards');
   });
 
   it('installs nothing when declined', async () => {

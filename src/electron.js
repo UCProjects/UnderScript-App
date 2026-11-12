@@ -15,6 +15,7 @@ import { createInstalled } from './userscript/installed.js';
 import { createSettings } from './launcher/settings.js';
 import { createLauncher } from './launcher/window.js';
 import { loadRegistry, registryWarnings } from './userscript/registry.js';
+import { pruneScript } from './userscript/pending.js';
 import { rebuildStale } from './userscript/rebuild.js';
 import { createRequester } from './userscript/request.js';
 import { createStore } from './userscript/store.js';
@@ -370,8 +371,10 @@ async function injectGame(event) {
       return fs.readFile(path.resolve(app.getAppPath(), 'src', 'inject', name), 'utf8');
     }),
   ]);
+  const prune = pruneScript(await getInstalled().reportable());
   return {
     scripts: [
+      ...prune ? [prune] : [],
       injectable(bundle, tokens[0]),
       ...scripts,
       ...plugins.map((plugin, index) => injectable(plugin.bundle, tokens[index + 1])),

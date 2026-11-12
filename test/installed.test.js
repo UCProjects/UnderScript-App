@@ -155,6 +155,19 @@ describe('createInstalled', () => {
     assert.deepEqual((await installed.enabledBundles()).map((entry) => entry.url), [URL_A, URL_B]);
   });
 
+  it('reports every installed plugin by its plugin name, disabled ones included', async () => {
+    await installed.save({ url: URL_A, ...build('Alpha'), pluginName: 'Registry Alpha' });
+    await installed.save({ url: URL_B, ...build('Beta', [], '2.5.0') });
+    await installed.setEnabled(URL_B, false);
+    assert.deepEqual(await installed.reportable(), [
+      { name: 'Registry Alpha', version: '1.0.0', enabled: true },
+      { name: 'Beta', version: '2.5.0', enabled: false },
+    ]);
+    assert.deepEqual(await createInstalled(dir).reportable(), await installed.reportable());
+    await installed.save({ url: URL_A, ...build('Alpha', [], '1.1.0') });
+    assert.equal((await installed.reportable())[0].name, 'Alpha');
+  });
+
   it('leaves scripts marked noframes out of subframes only', async () => {
     await installed.save({ url: URL_A, ...build('Alpha') });
     await installed.save({ url: URL_B, ...build('Beta', ['// @noframes']) });

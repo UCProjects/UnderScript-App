@@ -148,7 +148,7 @@ export function createInstalled(dir) {
       };
     },
 
-    save: ({ url, name, id, version, meta, bundle, script = '', assets = { requires: [], resources: {} }, format = bundleFormat, source = 'registry' }) => serialize(async () => {
+    save: ({ url, name, id, version, meta, bundle, script = '', assets = { requires: [], resources: {} }, format = bundleFormat, source = 'registry', pluginName = name }) => serialize(async () => {
       const records = await load();
       const existing = records.find((record) => record.url === url);
       const now = new Date().toISOString();
@@ -156,6 +156,7 @@ export function createInstalled(dir) {
       const record = {
         url,
         name,
+        pluginName,
         id,
         source: existing ? existing.source : source,
         version,
@@ -200,6 +201,10 @@ export function createInstalled(dir) {
       await file.rm(folder(url), { recursive: true, force: true });
       return true;
     }),
+
+    async reportable() {
+      return (await load()).map((record) => ({ name: record.pluginName ?? record.name, version: record.version, enabled: record.enabled }));
+    },
 
     async enabledBundles({ subframe = false } = {}) {
       return (await load()).filter((record) => record.enabled && allowedIn(record, subframe)).map(pick);
