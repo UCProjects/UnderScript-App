@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { promises as file } from 'fs';
 import path from 'path';
-import { runsOn } from './bundle.js';
+import { bundleFormat, runsOn } from './bundle.js';
 
 function comparable(meta) {
   const values = {};
@@ -43,23 +43,29 @@ export function createInstalled(dir) {
   let queue = Promise.resolve();
   let cache;
 
-  function stem(url) {
-    return path.join(dir, crypto.createHash('sha256').update(url).digest('hex'));
+  const folder = (url) => path.join(dir, crypto.createHash('sha256').update(url).digest('hex'));
+  const strip = ({ bundle, ...record }) => record;
+  const pick = ({ url, id, bundle }) => ({ url, id, bundle });
+
+  async function write(target, text) {
+    await file.writeFile(`${target}.tmp`, text);
+    await file.rename(`${target}.tmp`, target);
   }
 
   async function load() {
     if (cache) return cache;
     const records = [];
-    let names = [];
+    let entries = [];
     try {
-      names = await file.readdir(dir);
+      entries = await file.readdir(dir, { withFileTypes: true });
     } catch (e) {
-      names = [];
+      entries = [];
     }
-    for (const name of names.filter((entry) => entry.endsWith('.json'))) {
+    for (const entry of entries.filter((item) => item.isDirectory())) {
       try {
-        const record = JSON.parse(await file.readFile(path.join(dir, name), 'utf8'));
-        const bundle = await file.readFile(path.join(dir, name.replace(/\.json$/, '.js')), 'utf8');
+        const base = path.join(dir, entry.name);
+        const record = JSON.parse(await file.readFile(path.join(base, 'record.json'), 'utf8'));
+        const bundle = await file.readFile(path.join(base, 'bundle.js'), 'utf8');
         if (typeof record?.url === 'string') records.push({ ...record, source: record.source ?? 'registry', bundle });
       } catch (e) {
         continue;
@@ -70,13 +76,30 @@ export function createInstalled(dir) {
   }
 
   async function persist(record) {
-    const base = stem(record.url);
+    const base = folder(record.url);
     const { bundle, ...data } = record;
-    await file.mkdir(dir, { recursive: true });
-    await file.writeFile(`${base}.js.tmp`, bundle);
-    await file.rename(`${base}.js.tmp`, `${base}.js`);
-    await file.writeFile(`${base}.json.tmp`, JSON.stringify(data, null, 2));
-    await file.rename(`${base}.json.tmp`, `${base}.json`);
+    await file.mkdir(base, { recursive: true });
+    await write(path.join(base, 'bundle.js'), bundle);
+    await write(path.join(base, 'record.json'), JSON.stringify(data, null, 2));
+  }
+
+  async function persistAssets(url, script, assets) {
+    const base = folder(url);
+    const target = path.join(base, 'assets');
+    await file.rm(target, { recursive: true, force: true });
+    await file.mkdir(target, { recursive: true });
+    await write(path.join(base, 'script.user.js'), script);
+    const requires = await Promise.all(assets.requires.map(async ({ url: from, integrity, code }, index) => {
+      const name = `require-${index}.js`;
+      await write(path.join(target, name), code);
+      return { url: from, integrity, file: name };
+    }));
+    const resources = await Promise.all(Object.entries(assets.resources).map(async ([name, { url: from, integrity, code }], index) => {
+      const fileName = `resource-${index}.txt`;
+      await write(path.join(target, fileName), code);
+      return { name, url: from, integrity, file: fileName };
+    }));
+    return { requires, resources };
   }
 
   function serialize(task) {
@@ -84,8 +107,6 @@ export function createInstalled(dir) {
     queue = run;
     return run;
   }
-
-  const strip = ({ bundle, ...record }) => record;
 
   return {
     async list() {
@@ -97,18 +118,47 @@ export function createInstalled(dir) {
       return found && strip(found);
     },
 
-    save: ({ url, name, id, version, meta, bundle, source = 'registry' }) => serialize(async () => {
+    async stale(format = bundleFormat) {
+      return (await load()).filter((record) => record.format !== format).map(strip);
+    },
+
+    async assetsOf(url) {
+      const record = (await load()).find((entry) => entry.url === url);
+      if (!record) return undefined;
+      const base = folder(url);
+      const read = (...parts) => file.readFile(path.join(base, ...parts), 'utf8');
+      return {
+        script: await read('script.user.js'),
+        assets: {
+          requires: await Promise.all((record.requires ?? []).map(async ({ url: from, integrity, file: name }) => ({
+            url: from,
+            integrity,
+            code: await read('assets', name),
+          }))),
+          resources: Object.fromEntries(await Promise.all((record.resources ?? []).map(async ({ name, url: from, integrity, file: fileName }) => [name, {
+            url: from,
+            integrity,
+            code: await read('assets', fileName),
+          }]))),
+        },
+      };
+    },
+
+    save: ({ url, name, id, version, meta, bundle, script = '', assets = { requires: [], resources: {} }, format = bundleFormat, source = 'registry' }) => serialize(async () => {
       const records = await load();
       const existing = records.find((record) => record.url === url);
       const now = new Date().toISOString();
+      const manifest = await persistAssets(url, script, assets);
       const record = {
         url,
         name,
         id,
         source: existing ? existing.source : source,
         version,
+        format,
         meta,
         bundle,
+        ...manifest,
         enabled: existing ? existing.enabled : true,
         installedAt: existing ? existing.installedAt : now,
         updatedAt: now,
@@ -118,6 +168,15 @@ export function createInstalled(dir) {
       if (existing) records[records.indexOf(existing)] = record;
       else records.push(record);
       return strip(record);
+    }),
+
+    rebuilt: (url, { bundle, meta, format = bundleFormat }) => serialize(async () => {
+      const records = await load();
+      const record = records.find((entry) => entry.url === url);
+      if (!record) return false;
+      Object.assign(record, { bundle, meta, format });
+      await persist(record);
+      return true;
     }),
 
     setEnabled: (url, enabled) => serialize(async () => {
@@ -134,19 +193,18 @@ export function createInstalled(dir) {
       const index = records.findIndex((entry) => entry.url === url);
       if (index < 0) return false;
       records.splice(index, 1);
-      const base = stem(url);
-      await Promise.all([`${base}.js`, `${base}.json`].map((target) => file.rm(target, { force: true })));
+      await file.rm(folder(url), { recursive: true, force: true });
       return true;
     }),
 
     async enabledBundles() {
-      return (await load()).filter((record) => record.enabled).map(({ url, id, bundle }) => ({ url, id, bundle }));
+      return (await load()).filter((record) => record.enabled).map(pick);
     },
 
     async bundlesFor(href) {
       return (await load())
         .filter((record) => record.enabled && runsOn(record.bundle, href))
-        .map(({ url, id, bundle }) => ({ url, id, bundle }));
+        .map(pick);
     },
   };
 }

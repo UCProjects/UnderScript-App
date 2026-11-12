@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { gmApi } from './gm.js';
 import { matchesUrl } from './match.js';
 
@@ -62,6 +63,27 @@ export function injectable(bundle, token) {
     '})();',
   ].join('\n');
 }
+
+const probeMeta = {
+  name: 'probe',
+  namespace: 'probe',
+  version: '1',
+  description: 'probe',
+  author: 'probe',
+  matches: ['probe'],
+  includes: ['probe'],
+  excludes: ['probe'],
+  excludeMatches: ['probe'],
+  grants: ['GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_listValues', 'GM_getResourceText', 'unsafeWindow', 'GM_xmlhttpRequest', 'GM.xmlHttpRequest'],
+  connects: ['probe'],
+  runAt: 'document-idle',
+};
+
+export const bundleFormat = crypto
+  .createHash('sha256')
+  .update(createBundle(probeMeta, 'probe', { requires: ['probe'], resources: { probe: 'probe' } }))
+  .digest('hex')
+  .slice(0, 16);
 
 export function bundleInfo(bundle) {
   try {

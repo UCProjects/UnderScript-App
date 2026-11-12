@@ -16,17 +16,21 @@ export async function request(url, headers) {
   return res;
 }
 
+export function verifyIntegrity(body, integrity, url) {
+  for (const { algorithm, hash } of integrity) {
+    if (crypto.createHash(algorithm).update(body).digest('hex') !== hash) {
+      throw new Error(`Checksum mismatch for ${url}`);
+    }
+  }
+}
+
 export async function download({ url, integrity = [] }) {
   if (new URL(url).protocol !== 'https:') throw new Error(`Refusing to download ${url}`);
   const res = await request(url);
   if (res.status !== 200) throw new Error(`Unable to download ${url} (${res.status})`);
   const body = Buffer.from(await res.arrayBuffer());
   if (body.length > limit) throw new Error(`${url} is too large`);
-  for (const { algorithm, hash } of integrity) {
-    if (crypto.createHash(algorithm).update(body).digest('hex') !== hash) {
-      throw new Error(`Checksum mismatch for ${url}`);
-    }
-  }
+  verifyIntegrity(body, integrity, url);
   return String(body);
 }
 

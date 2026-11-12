@@ -30,6 +30,11 @@ function build(name, extra, version, match) {
   return { name, id: `${meta.namespace}|${meta.name}`, version: meta.version, meta, bundle: createBundle(meta, source) };
 }
 
+const assetsOf = () => ({
+  requires: [{ url: 'https://example.com/lib.js', integrity: [], code: 'lib code' }],
+  resources: { css: { url: 'https://example.com/a.css', integrity: [{ algorithm: 'sha256', hash: 'ab' }], code: 'body {}' } },
+});
+
 let dir;
 let installed;
 
@@ -119,7 +124,7 @@ describe('createInstalled', () => {
     assert.equal((await installed.save({ url: URL_A, ...build('Alpha') })).source, 'registry');
     assert.equal((await installed.save({ url: URL_B, ...build('Beta'), source: 'local' })).source, 'local');
     assert.equal((await installed.save({ url: URL_B, ...build('Beta', [], '2.0.0') })).source, 'local');
-    const base = path.join(dir, (await file.readdir(dir)).find((name) => name.endsWith('.json')));
+    const base = path.join(dir, (await file.readdir(dir))[0], 'record.json');
     const record = JSON.parse(await file.readFile(base, 'utf8'));
     delete record.source;
     await file.writeFile(base, JSON.stringify(record));
@@ -175,23 +180,62 @@ describe('createInstalled', () => {
     assert.equal(await installed.remove(URL_A), true);
     assert.equal(await installed.remove(URL_A), false);
     assert.deepEqual((await createInstalled(dir).list()).map((record) => record.name), ['Beta']);
-    assert.equal((await file.readdir(dir)).length, 2);
+    assert.equal((await file.readdir(dir)).length, 1);
   });
 
   it('skips records it cannot read', async () => {
     await installed.save({ url: URL_A, ...build('Alpha') });
     await installed.save({ url: URL_B, ...build('Beta') });
-    const names = (await file.readdir(dir)).filter((name) => name.endsWith('.json'));
-    await file.writeFile(path.join(dir, names[0]), '{broken');
-    await file.writeFile(path.join(dir, 'orphan.json'), JSON.stringify({ url: 'https://example.com/orphan.user.js', order: 9 }));
+    const [first] = await file.readdir(dir);
+    await file.writeFile(path.join(dir, first, 'record.json'), '{broken');
+    await file.mkdir(path.join(dir, 'orphan'));
+    await file.writeFile(path.join(dir, 'orphan', 'record.json'), JSON.stringify({ url: 'https://example.com/orphan.user.js', order: 9 }));
+    await file.writeFile(path.join(dir, 'stray.json'), '{}');
     assert.equal((await createInstalled(dir).list()).length, 1);
   });
 
-  it('writes files named by a hash, with no temporary files left', async () => {
-    await installed.save({ url: '../../evil/x.user.js', ...build('Alpha') });
-    const files = await file.readdir(dir);
-    assert.equal(files.length, 2);
-    for (const name of files) assert.match(name, /^[0-9a-f]{64}\.(json|js)$/);
+  it('keeps each script in a folder named by a hash, with no temporary files left', async () => {
+    await installed.save({ url: '../../evil/x.user.js', ...build('Alpha'), script: 'code', assets: assetsOf() });
+    const folders = await file.readdir(dir);
+    assert.equal(folders.length, 1);
+    assert.match(folders[0], /^[0-9a-f]{64}$/);
+    const inside = [];
+    const walk = async (target) => {
+      for (const entry of await file.readdir(target, { withFileTypes: true })) {
+        if (entry.isDirectory()) await walk(path.join(target, entry.name));
+        else inside.push(path.relative(path.join(dir, folders[0]), path.join(target, entry.name)).split(path.sep).join('/'));
+      }
+    };
+    await walk(path.join(dir, folders[0]));
+    assert.deepEqual(inside.sort(), ['assets/require-0.js', 'assets/resource-0.txt', 'bundle.js', 'record.json', 'script.user.js']);
+  });
+
+  it('gives back the script and assets it was saved with', async () => {
+    await installed.save({ url: URL_A, ...build('Alpha'), script: 'the script', assets: assetsOf() });
+    assert.deepEqual(await createInstalled(dir).assetsOf(URL_A), { script: 'the script', assets: assetsOf() });
+    assert.equal(await installed.assetsOf(URL_B), undefined);
+  });
+
+  it('drops assets that a newer save no longer has', async () => {
+    await installed.save({ url: URL_A, ...build('Alpha'), script: 'one', assets: assetsOf() });
+    await installed.save({ url: URL_A, ...build('Alpha', [], '2.0.0'), script: 'two' });
+    assert.deepEqual(await createInstalled(dir).assetsOf(URL_A), { script: 'two', assets: { requires: [], resources: {} } });
+  });
+
+  it('finds records built with another bundle format and updates them in place', async () => {
+    await installed.save({ url: URL_A, ...build('Alpha'), script: 's', format: 'old' });
+    await installed.save({ url: URL_B, ...build('Beta'), script: 's' });
+    assert.deepEqual((await installed.stale('current')).map((record) => record.name), ['Alpha', 'Beta']);
+    assert.deepEqual((await installed.stale()).map((record) => record.name), ['Alpha']);
+    const before = await installed.get(URL_A);
+    await installed.setEnabled(URL_A, false);
+    assert.equal(await installed.rebuilt(URL_A, { bundle: 'new bundle', meta: build('Alpha').meta }), true);
+    assert.equal(await installed.rebuilt('https://example.com/none.user.js', { bundle: 'x', meta: {} }), false);
+    const after = await createInstalled(dir).get(URL_A);
+    assert.equal(after.updatedAt, before.updatedAt);
+    assert.equal(after.enabled, false);
+    assert.equal(after.format, (await installed.get(URL_B)).format);
+    assert.deepEqual(await installed.stale(), []);
   });
 
   it('applies concurrent saves in order', async () => {

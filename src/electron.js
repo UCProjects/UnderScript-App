@@ -15,6 +15,7 @@ import { createInstalled } from './userscript/installed.js';
 import { createSettings } from './launcher/settings.js';
 import { createLauncher } from './launcher/window.js';
 import { loadRegistry, registryWarnings } from './userscript/registry.js';
+import { rebuildStale } from './userscript/rebuild.js';
 import { createRequester } from './userscript/request.js';
 import { createStore } from './userscript/store.js';
 import { isOffscreen, offscreenSwitches, offscreenWindowOptions } from './offscreen.js';
@@ -452,6 +453,7 @@ function getLauncher() {
 
 export default async () => {
   await app.whenReady();
+  await rebuildStale({ installed: getInstalled() }).catch(console.error);
   const shown = getLauncher();
   if ((await getInstalled().list()).length && (await launcherSettings.read()).showAtStartup) {
     const { outcome, close } = await shown.show('launcher');

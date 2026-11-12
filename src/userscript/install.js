@@ -77,6 +77,8 @@ export function createInstaller({ loadRegistry, fetchScript, build, installed, c
         version: meta.version,
         meta: built.meta,
         bundle: built.bundle,
+        script: source,
+        assets: built.assets,
       });
     } catch (error) {
       return { status: 'failed', entry, error };
