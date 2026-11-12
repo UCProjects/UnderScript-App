@@ -41,7 +41,7 @@ export function describeChanges(before, after) {
 
 export function createInstalled(dir) {
   let queue = Promise.resolve();
-  let cache;
+  let loading;
 
   const folder = (url) => path.join(dir, crypto.createHash('sha256').update(url).digest('hex'));
   const strip = ({ bundle, ...record }) => record;
@@ -53,8 +53,7 @@ export function createInstalled(dir) {
     await file.rename(`${target}.tmp`, target);
   }
 
-  async function load() {
-    if (cache) return cache;
+  async function readRecords() {
     const records = [];
     let entries = [];
     try {
@@ -72,8 +71,12 @@ export function createInstalled(dir) {
         continue;
       }
     }
-    cache = records.sort((x, y) => x.order - y.order);
-    return cache;
+    return records.sort((x, y) => x.order - y.order);
+  }
+
+  function load() {
+    loading ??= readRecords();
+    return loading;
   }
 
   async function persist(record) {

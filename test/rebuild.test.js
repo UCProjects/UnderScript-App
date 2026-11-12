@@ -155,8 +155,12 @@ describe('rebuildStale', () => {
     assert.equal(record.format, 'old');
   });
 
-  it('skips records saved without a script', async () => {
+  it('reports records saved without a script and keeps their bundle', async () => {
     await installed.save({ url: 'https://example.com/c.user.js', name: 'Gamma', id: 'c', version: '1', meta: {}, bundle: 'b', format: 'old' });
-    assert.deepEqual(await rebuildStale({ installed }), { rebuilt: [], failed: [] });
+    const logged = [];
+    const result = await rebuildStale({ installed, log: (...args) => logged.push(args) });
+    assert.deepEqual(result, { rebuilt: [], failed: ['https://example.com/c.user.js'] });
+    assert.equal(logged.length, 1);
+    assert.equal((await installed.enabledBundles())[0].bundle, 'b');
   });
 });

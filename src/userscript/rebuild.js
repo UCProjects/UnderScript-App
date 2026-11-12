@@ -7,7 +7,7 @@ export async function rebuildStale({ installed, format = bundleFormat, assemble 
   for (const record of await installed.stale(format)) {
     try {
       const stored = await installed.assetsOf(record.url);
-      if (!stored?.script) continue;
+      if (!stored?.script) throw new Error('The original script was not saved');
       const { meta, bundle } = assemble(stored.script, stored.assets);
       await installed.rebuilt(record.url, { meta, bundle, format });
       rebuilt.push(record.url);
