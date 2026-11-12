@@ -235,12 +235,26 @@ describe('parseMeta', () => {
     });
   });
 
-  it('skips the UnderScript checker require', () => {
+  it('skips the UnderScript checker require in every spelling', () => {
     const meta = parseMeta(wrap(
       '// @require https://raw.githubusercontent.com/UCProjects/UnderScript/master/src/checkerV2.js',
+      '// @require https://raw.githubusercontent.com/UCProjects/UnderScript/refs/heads/master/src/checkerV2.js',
       '// @require https://example.com/a.js',
     ));
     assert.deepEqual(meta.requires.map((r) => r.url), ['https://example.com/a.js']);
+  });
+
+  it('keeps the v1 checker, which a script calls itself, and requires that only look like the checker', () => {
+    const others = [
+      'https://raw.githubusercontent.com/UCProjects/UnderScript/master/src/checker.js',
+      'https://raw.githubusercontent.com/UCProjects/UnderScript/refs/heads/master/src/checker.js',
+      'https://raw.githubusercontent.com/UCProjects/UnderScript/master/src/other.js',
+      'https://raw.githubusercontent.com/someone/UnderScript/master/src/checkerV2.js',
+      'https://raw.githubusercontent.com/UCProjects/UnderScript/dev/src/checkerV2.js',
+      'https://example.com/UCProjects/UnderScript/master/src/checkerV2.js',
+    ];
+    const meta = parseMeta(wrap(...others.map((url) => `// @require ${url}`)));
+    assert.deepEqual(meta.requires.map((r) => r.url), others);
   });
 
   it('parses the real UnderScript release meta', () => {
