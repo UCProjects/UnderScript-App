@@ -150,6 +150,46 @@ describe('createBundle', () => {
   });
 });
 
+describe('GM_info script fields', () => {
+  const meta = {
+    name: 'Plugin',
+    namespace: 'https://example.com/',
+    version: '2.0.0',
+    homepage: 'https://example.com/home',
+    icon: 'https://example.com/icon.png',
+    updateURL: 'https://example.com/plugin.meta.js',
+    downloadURL: 'https://example.com/plugin.user.js',
+    values: { supportURL: ['https://example.com/help'], copyright: ['2026, me'], license: ['MIT'] },
+  };
+
+  it('carries the update and download urls that plugins pass to the updater', () => {
+    const info = bundleInfo(createBundle(meta, ''));
+    assert.equal(info.updateURL, 'https://example.com/plugin.meta.js');
+    assert.equal(info.downloadURL, 'https://example.com/plugin.user.js');
+  });
+
+  it('carries the other standard fields under their usual names', () => {
+    const info = bundleInfo(createBundle(meta, ''));
+    assert.equal(info.homepage, 'https://example.com/home');
+    assert.equal(info.homepageURL, 'https://example.com/home');
+    assert.equal(info.icon, 'https://example.com/icon.png');
+    assert.equal(info.supportURL, 'https://example.com/help');
+    assert.equal(info.copyright, '2026, me');
+    assert.equal(info.license, 'MIT');
+  });
+
+  it('leaves them out when the script does not set them', () => {
+    const info = bundleInfo(createBundle({ version: '1' }, ''));
+    for (const key of ['updateURL', 'downloadURL', 'homepage', 'icon', 'supportURL', 'copyright', 'license']) {
+      assert.equal(info[key], undefined, key);
+    }
+  });
+
+  it('changes the bundle format stamp when fields are added', () => {
+    assert.notEqual(createBundle({ version: '1' }, ''), createBundle({ version: '1', downloadURL: 'https://example.com/a.user.js' }, ''));
+  });
+});
+
 describe('noframes', () => {
   it('is recorded in the bundle info', () => {
     assert.equal(bundleInfo(createBundle({ version: '1', noframes: true }, '')).noframes, true);

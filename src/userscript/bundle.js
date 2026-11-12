@@ -5,6 +5,7 @@ import { matchesUrl } from './match.js';
 const infoPattern = /^const GM_info = (\{.*\});$/m;
 
 export function createBundle(meta, script, { requires = [], resources = {}, localResources = {} } = {}) {
+  const first = (key) => meta.values?.[key]?.[0];
   const GM_info = {
     scriptHandler: 'UnderScriptApp',
     script: {
@@ -13,6 +14,14 @@ export function createBundle(meta, script, { requires = [], resources = {}, loca
       version: meta.version,
       description: meta.description,
       author: meta.author,
+      homepage: meta.homepage,
+      homepageURL: meta.homepage,
+      icon: meta.icon,
+      updateURL: meta.updateURL,
+      downloadURL: meta.downloadURL,
+      supportURL: first('supportURL'),
+      copyright: first('copyright'),
+      license: first('license'),
       matches: meta.matches,
       includes: meta.includes,
       excludes: meta.excludes,
@@ -71,6 +80,11 @@ const probeMeta = {
   version: '1',
   description: 'probe',
   author: 'probe',
+  homepage: 'probe',
+  icon: 'probe',
+  updateURL: 'probe',
+  downloadURL: 'probe',
+  values: { supportURL: ['probe'], copyright: ['probe'], license: ['probe'] },
   matches: ['probe'],
   includes: ['probe'],
   excludes: ['probe'],
