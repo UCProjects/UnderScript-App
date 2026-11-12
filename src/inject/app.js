@@ -1,4 +1,8 @@
 (() => {
+  window.addEventListener('contextmenu', (event) => {
+    if (event.shiftKey) event.stopImmediatePropagation();
+  }, true);
+
   function ready(callback) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', callback, { once: true });

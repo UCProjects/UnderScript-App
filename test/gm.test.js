@@ -1,0 +1,295 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import vm from 'node:vm';
+import { createBundle } from '../src/userscript/bundle.js';
+import { gmApi, scriptId } from '../src/userscript/gm.js';
+
+function fakeApp(initial = {}) {
+  const calls = [];
+  const values = { ...initial };
+  return {
+    calls,
+    api: {
+      getValues: (id) => ({ ...values[id] }),
+      setValue: (id, key, raw) => calls.push(['set', id, key, raw]),
+      deleteValue: (id, key) => calls.push(['delete', id, key]),
+    },
+  };
+}
+
+function run(meta, script, api) {
+  const handlers = [];
+  const sandbox = {
+    JSON,
+    document: { readyState: 'loading', addEventListener: (type, handler) => handlers.push(handler) },
+  };
+  if (api) sandbox.underscriptApp = api;
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(createBundle(meta, script), sandbox);
+  handlers[0]();
+  return sandbox;
+}
+
+const all = ['GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_listValues'];
+const meta = (grants, extra = {}) => ({ name: 'Test', namespace: 'https://example.com/', version: '1', grants, ...extra });
+const id = scriptId(meta(all));
+
+describe('gmApi', () => {
+  it('defines nothing without grants', () => {
+    assert.deepEqual(gmApi({}), []);
+    assert.deepEqual(gmApi(meta([])), []);
+    assert.deepEqual(gmApi(meta(['none'])), []);
+    assert.deepEqual(gmApi(meta(['GM_getResourceText'])), []);
+  });
+
+  it('only defines the value store when a value function is granted', () => {
+    assert.equal(gmApi(meta(['unsafeWindow'])).some((code) => code.includes('__GM_store')), false);
+    assert.equal(gmApi(meta(['GM_listValues'])).some((code) => code.includes('const __GM_store')), true);
+  });
+
+  it('defines only the granted functions', () => {
+    const { api } = fakeApp();
+    const sandbox = run(meta(['GM_getValue']), 'window.types = [typeof GM_getValue, typeof GM_setValue, typeof GM_deleteValue, typeof GM_listValues].join();', api);
+    assert.equal(sandbox.types, 'function,undefined,undefined,undefined');
+  });
+
+  it('defines all four when all are granted', () => {
+    const { api } = fakeApp();
+    const sandbox = run(meta(all), 'window.types = [typeof GM_getValue, typeof GM_setValue, typeof GM_deleteValue, typeof GM_listValues].join();', api);
+    assert.equal(sandbox.types, 'function,function,function,function');
+  });
+
+  it('identifies a script by its namespace and name', () => {
+    assert.equal(scriptId({ namespace: 'https://example.com/', name: 'Test' }), 'https://example.com/|Test');
+    assert.equal(scriptId({}), '|unnamed');
+    assert.equal(scriptId(), '|unnamed');
+  });
+});
+
+describe('GM_getValue and GM_setValue', () => {
+  it('starts from the stored snapshot for its own script', () => {
+    const { api } = fakeApp({ [id]: { count: '5', name: '"stored"' }, 'other|Script': { count: '99' } });
+    const sandbox = run(meta(all), 'window.out = JSON.stringify([GM_getValue("count"), GM_getValue("name"), GM_listValues().sort()]);', api);
+    assert.equal(sandbox.out, '[5,"stored",["count","name"]]');
+  });
+
+  it('round trips json values and sends the raw json to be saved', () => {
+    const { api, calls } = fakeApp();
+    const sandbox = run(meta(all), `
+      GM_setValue('n', 5);
+      GM_setValue('s', 'text');
+      GM_setValue('b', false);
+      GM_setValue('z', null);
+      GM_setValue('o', { a: [1, 2, { b: 3 }] });
+      window.out = JSON.stringify([GM_getValue('n'), GM_getValue('s'), GM_getValue('b'), GM_getValue('z'), GM_getValue('o')]);
+    `, api);
+    assert.equal(sandbox.out, '[5,"text",false,null,{"a":[1,2,{"b":3}]}]');
+    assert.deepEqual(calls, [
+      ['set', id, 'n', '5'],
+      ['set', id, 's', '"text"'],
+      ['set', id, 'b', 'false'],
+      ['set', id, 'z', 'null'],
+      ['set', id, 'o', '{"a":[1,2,{"b":3}]}'],
+    ]);
+  });
+
+  it('returns the fallback for missing keys, and undefined without one', () => {
+    const { api } = fakeApp();
+    const sandbox = run(meta(all), 'window.out = JSON.stringify([GM_getValue("nope", "fallback"), GM_getValue("nope") === undefined, GM_getValue("nope", 0)]);', api);
+    assert.equal(sandbox.out, '["fallback",true,0]');
+  });
+
+  it('returns the fallback when a stored value is not valid json', () => {
+    const { api } = fakeApp({ [id]: { broken: '{not json' } });
+    const sandbox = run(meta(all), 'window.out = GM_getValue("broken", "fallback");', api);
+    assert.equal(sandbox.out, 'fallback');
+  });
+
+  it('hands out copies, so changing a result does not change the stored value', () => {
+    const { api } = fakeApp({ [id]: { o: '{"a":1}' } });
+    const sandbox = run(meta(all), 'const first = GM_getValue("o"); first.a = 2; window.out = GM_getValue("o").a;', api);
+    assert.equal(sandbox.out, 1);
+  });
+
+  it('removes a key when set to undefined', () => {
+    const { api, calls } = fakeApp({ [id]: { k: '1' } });
+    const sandbox = run(meta(all), 'GM_setValue("k", undefined); window.out = [GM_getValue("k", "gone"), GM_listValues().length].join();', api);
+    assert.equal(sandbox.out, 'gone,0');
+    assert.deepEqual(calls, [['delete', id, 'k']]);
+  });
+
+  it('turns keys into strings', () => {
+    const { api, calls } = fakeApp();
+    const sandbox = run(meta(all), 'GM_setValue(1, "one"); window.out = [GM_getValue("1"), GM_getValue(1), GM_listValues()[0] === "1"].join();', api);
+    assert.equal(sandbox.out, 'one,one,true');
+    assert.deepEqual(calls, [['set', id, '1', '"one"']]);
+  });
+
+  it('lets errors from unserializable values reach the script', () => {
+    const { api } = fakeApp();
+    const sandbox = run(meta(all), 'const a = {}; a.self = a; try { GM_setValue("loop", a); window.out = "no error"; } catch (e) { window.out = e.name; }', api);
+    assert.equal(sandbox.out, 'TypeError');
+  });
+
+  it('keeps working in memory when the bridge is missing', () => {
+    const sandbox = run(meta(all), 'GM_setValue("k", 1); window.out = GM_getValue("k");');
+    assert.equal(sandbox.out, 1);
+  });
+});
+
+describe('GM_deleteValue and GM_listValues', () => {
+  it('deletes only the named key and saves the deletion', () => {
+    const { api, calls } = fakeApp();
+    const sandbox = run(meta(all), 'GM_setValue("a", 1); GM_setValue("b", 2); GM_deleteValue("a"); window.out = [GM_getValue("a", "x"), GM_getValue("b")].join();', api);
+    assert.equal(sandbox.out, 'x,2');
+    assert.deepEqual(calls.at(-1), ['delete', id, 'a']);
+  });
+
+  it('lists keys including ones set this run', () => {
+    const { api } = fakeApp({ [id]: { old: '1' } });
+    const sandbox = run(meta(all), 'GM_setValue("fresh", 2); window.out = JSON.stringify(GM_listValues().sort());', api);
+    assert.equal(sandbox.out, '["fresh","old"]');
+  });
+});
+
+describe('unsafeWindow', () => {
+  it('is the page window when granted', () => {
+    const { api } = fakeApp();
+    const sandbox = run(meta(['unsafeWindow']), 'window.same = unsafeWindow === window; unsafeWindow.fromScript = "set"; window.type = typeof unsafeWindow;', api);
+    assert.equal(sandbox.same, true);
+    assert.equal(sandbox.type, 'object');
+    assert.equal(sandbox.fromScript, 'set');
+  });
+
+  it('is not defined unless granted', () => {
+    const { api } = fakeApp();
+    for (const grants of [undefined, [], ['none'], ['GM_getValue']]) {
+      const sandbox = run(meta(grants), 'window.type = typeof unsafeWindow;', api);
+      assert.equal(sandbox.type, 'undefined');
+    }
+  });
+
+  it('works together with the value functions', () => {
+    const { api } = fakeApp();
+    const sandbox = run(meta(['unsafeWindow', 'GM_setValue', 'GM_getValue']), 'GM_setValue("k", 1); window.out = [typeof unsafeWindow, GM_getValue("k")].join();', api);
+    assert.equal(sandbox.out, 'object,1');
+  });
+
+  it('matches how UnderScript detects it', () => {
+    const { api } = fakeApp();
+    const detect = 'window.picked = (typeof unsafeWindow === "object" ? unsafeWindow : globalThis) === window;';
+    assert.equal(run(meta(['unsafeWindow']), detect, api).picked, true);
+    const bare = run(meta(['none']), detect.replace('globalThis', 'window'), api);
+    assert.equal(bare.picked, true);
+  });
+});
+
+describe('GM_xmlhttpRequest and GM.xmlHttpRequest', () => {
+  function requestApp(result = { type: 'load', response: { status: 200, responseText: 'hi' } }) {
+    const calls = [];
+    const aborted = [];
+    return {
+      calls,
+      aborted,
+      api: {
+        request: (details, callback) => {
+          calls.push(details);
+          Promise.resolve().then(() => callback(result.type, result.response));
+          return calls.length;
+        },
+        abortRequest: (requestId) => aborted.push(requestId),
+      },
+    };
+  }
+
+  const wait = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('defines nothing unless granted', () => {
+    const sandbox = run(meta(['GM_getValue']), 'window.types = [typeof GM_xmlhttpRequest, typeof GM].join();', requestApp().api);
+    assert.equal(sandbox.types, 'undefined,undefined');
+  });
+
+  it('defines only the granted spelling', () => {
+    const { api } = requestApp();
+    assert.equal(run(meta(['GM_xmlhttpRequest']), 'window.types = [typeof GM_xmlhttpRequest, typeof GM].join();', api).types, 'function,undefined');
+    assert.equal(run(meta(['GM.xmlHttpRequest']), 'window.types = [typeof GM_xmlhttpRequest, typeof GM.xmlHttpRequest].join();', api).types, 'undefined,function');
+  });
+
+  it('sends only plain request fields and calls the matching handler', async () => {
+    const { api, calls } = requestApp();
+    const sandbox = run(meta(['GM_xmlhttpRequest']), `
+      window.out = [];
+      GM_xmlhttpRequest({
+        method: 'POST', url: 'https://example.com/', headers: { A: 'b' }, data: 'x', timeout: 5, responseType: 'json',
+        onload: (r) => window.out.push(['load', r.responseText]),
+        onerror: () => window.out.push(['error']),
+        connects: ['evil.test'],
+      });
+    `, api);
+    await wait();
+    assert.equal(JSON.stringify(calls), JSON.stringify([{ method: 'POST', url: 'https://example.com/', headers: { A: 'b' }, data: 'x', timeout: 5, responseType: 'json' }]));
+    assert.equal(JSON.stringify(sandbox.out), '[["load","hi"]]');
+  });
+
+  it('calls onerror, ontimeout and onabort for those results', async () => {
+    for (const type of ['error', 'timeout', 'abort']) {
+      const { api } = requestApp({ type, response: { status: 0, error: type } });
+      const sandbox = run(meta(['GM_xmlhttpRequest']), `
+        window.out = [];
+        GM_xmlhttpRequest({ url: 'https://example.com/', on${type}: (r) => window.out.push(r.error) });
+      `, api);
+      await wait();
+      assert.equal(JSON.stringify(sandbox.out), JSON.stringify([type]));
+    }
+  });
+
+  it('survives a handler that throws and a missing handler', async () => {
+    const { api } = requestApp();
+    run(meta(['GM_xmlhttpRequest']), "GM_xmlhttpRequest({ url: 'https://example.com/', onload: () => { throw new Error('x'); } }); GM_xmlhttpRequest({ url: 'https://example.com/' });", { ...api });
+    await wait();
+  });
+
+  it('aborts through the returned control', () => {
+    const { api, aborted } = requestApp();
+    run(meta(['GM_xmlhttpRequest']), "GM_xmlhttpRequest({ url: 'https://example.com/' }).abort();", api);
+    assert.deepEqual(aborted, [1]);
+  });
+
+  it('reports an error when the app bridge is missing', async () => {
+    const sandbox = run(meta(['GM_xmlhttpRequest']), `
+      window.out = [];
+      GM_xmlhttpRequest({ url: 'https://example.com/', onerror: (r) => window.out.push(r.error) });
+    `);
+    await wait();
+    assert.equal(JSON.stringify(sandbox.out), '["Requests are not available"]');
+  });
+
+  it('resolves the promise form with the response and rejects on errors', async () => {
+    const good = run(meta(['GM.xmlHttpRequest']), "window.done = GM.xmlHttpRequest({ url: 'https://example.com/' }).then((r) => r.responseText);", requestApp().api);
+    assert.equal(await good.done, 'hi');
+    const bad = run(meta(['GM.xmlHttpRequest']), `
+      window.done = GM.xmlHttpRequest({ url: 'https://example.com/' }).then(() => 'resolved', (r) => r.error);
+    `, requestApp({ type: 'error', response: { status: 0, error: 'nope' } }).api);
+    assert.equal(await bad.done, 'nope');
+  });
+
+  it('also calls handlers given to the promise form and can abort it', async () => {
+    const { api, aborted } = requestApp();
+    const sandbox = run(meta(['GM.xmlHttpRequest']), `
+      window.seen = [];
+      const promise = GM.xmlHttpRequest({ url: 'https://example.com/', onload: (r) => window.seen.push(r.status) });
+      window.done = promise;
+      promise.abort();
+    `, api);
+    await sandbox.done;
+    assert.equal(JSON.stringify(sandbox.seen), '[200]');
+    assert.deepEqual(aborted, [1]);
+  });
+
+  it('works with both spellings granted', () => {
+    const { api } = requestApp();
+    const sandbox = run(meta(['GM_xmlhttpRequest', 'GM.xmlHttpRequest']), 'window.types = [typeof GM_xmlhttpRequest, typeof GM.xmlHttpRequest].join();', api);
+    assert.equal(sandbox.types, 'function,function');
+  });
+});
