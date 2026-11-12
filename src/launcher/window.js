@@ -71,6 +71,9 @@ export function createLauncher({ getInstalled, getWarnings, reinstall, settings 
           sandbox: true,
           contextIsolation: true,
           nodeIntegration: false,
+    close() {
+      if (current && !current.isDestroyed()) current.close();
+    },
           preload: path.resolve(app.getAppPath(), 'src', 'preload', 'launcher.cjs'),
         },
       });

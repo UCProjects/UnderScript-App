@@ -60,6 +60,8 @@ function createWindow() {
   });
 
   ['inject', 'rememberMe', 'zoom'].forEach((name) => {
+  win.on('closed', () => launcher?.close());
+
     win.webContents.session.registerPreloadScript({
       type: 'frame',
       filePath: path.resolve(app.getAppPath(), 'src', 'preload', `${name}.cjs`),
