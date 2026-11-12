@@ -12,6 +12,16 @@ function element(tag, props = {}, ...children) {
   return node;
 }
 
+function describe({ status, version, previousVersion, message }) {
+  if (status === 'installed' || status === 'updated') {
+    const change = previousVersion === version || previousVersion === undefined ? `Reinstalled v${version}` : `Updated v${previousVersion} to v${version}`;
+    return `${change}. Refresh the page to load it`;
+  }
+  if (status === 'cancelled') return 'Cancelled';
+  if (status === 'rejected') return 'No longer in the community plugin list, so it cannot be reinstalled';
+  return message ?? 'The plugin could not be reinstalled';
+}
+
 function row(plugin) {
   const toggle = element('input', { type: 'checkbox', checked: plugin.enabled, title: 'Enabled' });
   const item = element('li', { className: plugin.enabled ? '' : 'disabled' });
@@ -38,11 +48,26 @@ function row(plugin) {
     await render();
   });
 
+  const status = element('div', { className: 'status' });
+  const reinstall = element('button', { type: 'button', className: 'reinstall' }, 'Reinstall');
+  reinstall.addEventListener('click', async () => {
+    reinstall.disabled = true;
+    status.textContent = 'Reinstalling...';
+    try {
+      status.textContent = describe(await window.launcher.reinstall(plugin.url));
+    } catch (error) {
+      status.textContent = 'The plugin could not be reinstalled';
+    }
+    reinstall.disabled = false;
+  });
+
   item.append(
     toggle,
     element('div', { className: 'info' },
       element('div', { className: 'name', textContent: plugin.name }),
-      element('div', { className: 'version', textContent: `v${plugin.version}` })),
+      element('div', { className: 'version', textContent: `v${plugin.version}` }),
+      status),
+    ...plugin.source === 'registry' ? [reinstall] : [],
     remove,
   );
   return item;

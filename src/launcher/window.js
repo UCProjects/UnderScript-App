@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 
-export function createLauncher({ getInstalled, getWarnings, settings }) {
+export function createLauncher({ getInstalled, getWarnings, reinstall, settings }) {
   let current;
   let finish;
 
@@ -10,11 +10,22 @@ export function createLauncher({ getInstalled, getWarnings, settings }) {
   ipcMain.handle('plugins:list', async (event) => {
     if (!isCurrent(event)) return [];
     const records = await getInstalled().list();
-    return records.map(({ url, name, version, enabled }) => ({ url, name, version, enabled }));
+    return records.map(({ url, name, version, enabled, source }) => ({ url, name, version, enabled, source }));
   });
 
   ipcMain.handle('plugins:warnings', async (event) => {
     return isCurrent(event) ? getWarnings() : [];
+  });
+
+  ipcMain.handle('plugins:reinstall', async (event, url) => {
+    if (!isCurrent(event) || typeof url !== 'string') return { status: 'failed', message: 'Invalid plugin' };
+    const record = await getInstalled().get(url);
+    if (!record || record.source !== 'registry') return { status: 'failed', message: 'This plugin cannot be reinstalled' };
+    try {
+      return await reinstall(url);
+    } catch (error) {
+      return { status: 'failed', message: String(error?.message ?? error) };
+    }
   });
 
   ipcMain.handle('plugins:enable', async (event, url, enabled) => {

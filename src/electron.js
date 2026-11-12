@@ -10,7 +10,7 @@ import { bundleInfo, injectable, runsOn } from './userscript/bundle.js';
 import { buildBundle } from './userscript/build.js';
 import { download } from './userscript/download.js';
 import { scriptId } from './userscript/gm.js';
-import { createInstaller } from './userscript/install.js';
+import { createInstaller, describeResult } from './userscript/install.js';
 import { createInstalled } from './userscript/installed.js';
 import { createSettings } from './launcher/settings.js';
 import { createLauncher } from './launcher/window.js';
@@ -160,40 +160,9 @@ function createWindow() {
     }
   }
 
-  async function confirmInstall({ kind, name, version, previousVersion, details }) {
-    const shown = details.slice(0, 20);
-    if (details.length > shown.length) shown.push(`...and ${details.length - shown.length} more`);
-    const { response } = await dialog.showMessageBox(win, kind === 'new' ? {
-      type: 'question',
-      buttons: ['Install', 'Cancel'],
-      defaultId: 1,
-      cancelId: 1,
-      title: 'Install plugin',
-      message: `Install "${name}" v${version}?`,
-      detail: `${shown.join('\n')}\n\nPlugins run on undercards.net with access to your account. Only install plugins you trust.`,
-    } : {
-      type: 'warning',
-      buttons: ['Update', 'Cancel'],
-      defaultId: 1,
-      cancelId: 1,
-      title: 'Update plugin',
-      message: `"${name}" changed more than its version (v${previousVersion} to v${version})`,
-      detail: `${shown.join('\n')}\n\nOnly update if you still trust this plugin.`,
-    });
-    return response === 0;
-  }
-
-  const installer = createInstaller({
-    loadRegistry,
-    fetchScript: (url) => download({ url }),
-    build: (source) => buildBundle(source),
-    installed: getInstalled(),
-    confirm: confirmInstall,
-  });
-
   async function installPlugin(url) {
     try {
-      const result = await installer(url);
+      const result = await getInstaller()(url);
       if (result.status === 'installed') {
         toast({ title: `Installed ${result.name}`, text: 'Refresh the page to load it' });
       } else if (result.status === 'updated') {
@@ -324,6 +293,46 @@ function getInstalled() {
   return installed;
 }
 
+async function confirmInstall({ kind, name, version, previousVersion, details }) {
+  const shown = details.slice(0, 20);
+  if (details.length > shown.length) shown.push(`...and ${details.length - shown.length} more`);
+  const { response } = await dialog.showMessageBox(BrowserWindow.getFocusedWindow() ?? undefined, kind === 'new' ? {
+    type: 'question',
+    buttons: ['Install', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1,
+    title: 'Install plugin',
+    message: `Install "${name}" v${version}?`,
+    detail: `${shown.join('\n')}\n\nPlugins run on undercards.net with access to your account. Only install plugins you trust.`,
+  } : {
+    type: 'warning',
+    buttons: ['Update', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1,
+    title: 'Update plugin',
+    message: `"${name}" changed more than its version (v${previousVersion} to v${version})`,
+    detail: `${shown.join('\n')}\n\nOnly update if you still trust this plugin.`,
+  });
+  return response === 0;
+}
+
+let installer;
+
+function getInstaller() {
+  installer ??= createInstaller({
+    loadRegistry,
+    fetchScript: (url) => download({ url }),
+    build: (source) => buildBundle(source),
+    installed: getInstalled(),
+    confirm: confirmInstall,
+  });
+  return installer;
+}
+
+async function reinstall(url) {
+  return describeResult(await getInstaller()(url));
+}
+
 function embedded(event) {
   const frame = event.senderFrame;
   if (!frame?.parent) return false;
@@ -437,7 +446,7 @@ let launcherSettings;
 
 function getLauncher() {
   launcherSettings ??= createSettings(path.resolve(app.getPath('userData'), 'scripts', 'launcher.json'));
-  launcher ??= createLauncher({ getInstalled, getWarnings, settings: launcherSettings });
+  launcher ??= createLauncher({ getInstalled, getWarnings, reinstall, settings: launcherSettings });
   return launcher;
 }
 

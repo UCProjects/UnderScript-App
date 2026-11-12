@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { createInstalled } from '../src/userscript/installed.js';
 import { createBundle } from '../src/userscript/bundle.js';
-import { createInstaller, describeScript } from '../src/userscript/install.js';
+import { createInstaller, describeResult, describeScript } from '../src/userscript/install.js';
 import { parseMeta } from '../src/userscript/meta.js';
 
 const RELEASE = 'https://github.com/elytrafae/prettycards/releases/latest/download/prettycards.user.js';
@@ -82,6 +82,20 @@ describe('describeScript', () => {
     assert.ok(lines.includes('Author: elytrafae'));
     assert.ok(lines.includes('Permissions: none'));
     assert.equal(lines.some((line) => line.startsWith('Also loads')), false);
+  });
+});
+
+describe('describeResult', () => {
+  it('keeps the plain fields and turns an error into its message', () => {
+    assert.deepEqual(describeResult({ status: 'updated', name: 'A', version: '2', previousVersion: '1', entry: { url: 'x' } }), {
+      status: 'updated',
+      name: 'A',
+      version: '2',
+      previousVersion: '1',
+      message: undefined,
+    });
+    assert.equal(describeResult({ status: 'failed', error: new Error('boom') }).message, 'boom');
+    assert.equal(describeResult({ status: 'failed', error: 'text' }).message, 'text');
   });
 });
 

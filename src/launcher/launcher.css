@@ -90,6 +90,16 @@ li input[type='checkbox'] {
   font-size: 12px;
 }
 
+.status {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status:empty {
+  display: none;
+}
+
 .warning {
   margin-top: 2px;
   color: #f0ad4e;

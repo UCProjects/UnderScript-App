@@ -28,6 +28,16 @@ export function describeScript(meta, entry) {
   ];
 }
 
+export function describeResult({ status, name, version, previousVersion, error }) {
+  return {
+    status,
+    name,
+    version,
+    previousVersion,
+    message: error ? String(error.message ?? error) : undefined,
+  };
+}
+
 export function createInstaller({ loadRegistry, fetchScript, build, installed, confirm }) {
   const running = new Map();
 
