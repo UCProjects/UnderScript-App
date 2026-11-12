@@ -37,8 +37,13 @@ export function isPrivateHost(hostname) {
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return true;
   if (privateIPv4(host)) return true;
   if (!host.includes(':')) return false;
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(host);
-  if (mapped) return privateIPv4(mapped[1]);
+  const embedded = /^(?:::ffff:|::|64:ff9b::)(?:(\d+\.\d+\.\d+\.\d+)|([0-9a-f]{1,4}):([0-9a-f]{1,4}))$/.exec(host);
+  if (embedded?.[1]) return privateIPv4(embedded[1]);
+  if (embedded) {
+    const high = Number(`0x${embedded[2]}`);
+    const low = Number(`0x${embedded[3]}`);
+    return privateIPv4(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`);
+  }
   return host === '::' || host === '::1' || /^f[cd]/.test(host) || /^fe[89ab]/.test(host);
 }
 

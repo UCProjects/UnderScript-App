@@ -50,6 +50,15 @@ describe('isPrivateHost', () => {
     }
   });
 
+  it('sees through the forms a url normalizes embedded ipv4 addresses to', () => {
+    for (const url of ['https://[::ffff:127.0.0.1]/', 'https://[::ffff:10.0.0.1]/', 'https://[::ffff:c0a8:1]/', 'https://[::127.0.0.1]/', 'https://[64:ff9b::7f00:1]/', 'https://[64:ff9b::a9fe:a9fe]/', 'https://2130706433/']) {
+      assert.equal(isPrivateHost(new URL(url).hostname), true, url);
+    }
+    for (const url of ['https://[::ffff:8.8.8.8]/', 'https://[::ffff:808:808]/', 'https://[64:ff9b::808:808]/']) {
+      assert.equal(isPrivateHost(new URL(url).hostname), false, url);
+    }
+  });
+
   it('leaves public addresses alone', () => {
     for (const host of ['example.com', '8.8.8.8', '172.32.0.1', '100.128.0.1', '[2606:4700::1111]']) {
       assert.equal(isPrivateHost(host), false, host);
