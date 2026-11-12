@@ -326,6 +326,8 @@ function render({ kind, name, version, previousVersion, info, changes, hasSource
       ...lines(info.pages)));
   }
 
+  const asksToRequest = info.permissions.some(({ names }) => names.some((grant) => grant === 'GM_xmlhttpRequest' || grant === 'GM.xmlHttpRequest'));
+
   const views = [
     ...canDiff ? [expandable('changes', diffView)] : [],
     ...hasSource ? [expandable('source', sourceView)] : [],
@@ -338,10 +340,12 @@ function render({ kind, name, version, previousVersion, info, changes, hasSource
       : [],
     section('Can do', ...info.permissions.length
       ? info.permissions.map(permissionRow)
-      : [row(element('span', { className: 'muted', textContent: 'Nothing beyond running on the page' }))]),
-    section('Can reach', ...info.connects.length
-      ? capped(info.connects)
-      : [row(element('span', { className: 'muted', textContent: 'No other sites' }))]),
+      : [row(element('span', { className: 'muted', textContent: 'Nothing beyond running on Undercards.net' }))]),
+    ...info.connects.length || asksToRequest
+      ? [section('Can reach', ...info.connects.length
+        ? capped(info.connects)
+        : [row(element('span', { className: 'muted', textContent: 'No sites declared, so its web requests will be refused' }))])]
+      : [],
     section('Runs on', ...where),
     ...info.code.length ? [section('Loads code from', ...capped(info.code))] : [],
     section('Source',
