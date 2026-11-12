@@ -184,3 +184,112 @@ describe('unsafeWindow', () => {
     assert.equal(bare.picked, true);
   });
 });
+
+describe('GM_xmlhttpRequest and GM.xmlHttpRequest', () => {
+  function requestApp(result = { type: 'load', response: { status: 200, responseText: 'hi' } }) {
+    const calls = [];
+    const aborted = [];
+    return {
+      calls,
+      aborted,
+      api: {
+        request: (details, callback) => {
+          calls.push(details);
+          Promise.resolve().then(() => callback(result.type, result.response));
+          return calls.length;
+        },
+        abortRequest: (requestId) => aborted.push(requestId),
+      },
+    };
+  }
+
+  const wait = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('defines nothing unless granted', () => {
+    const sandbox = run(meta(['GM_getValue']), 'window.types = [typeof GM_xmlhttpRequest, typeof GM].join();', requestApp().api);
+    assert.equal(sandbox.types, 'undefined,undefined');
+  });
+
+  it('defines only the granted spelling', () => {
+    const { api } = requestApp();
+    assert.equal(run(meta(['GM_xmlhttpRequest']), 'window.types = [typeof GM_xmlhttpRequest, typeof GM].join();', api).types, 'function,undefined');
+    assert.equal(run(meta(['GM.xmlHttpRequest']), 'window.types = [typeof GM_xmlhttpRequest, typeof GM.xmlHttpRequest].join();', api).types, 'undefined,function');
+  });
+
+  it('sends only plain request fields and calls the matching handler', async () => {
+    const { api, calls } = requestApp();
+    const sandbox = run(meta(['GM_xmlhttpRequest']), `
+      window.out = [];
+      GM_xmlhttpRequest({
+        method: 'POST', url: 'https://example.com/', headers: { A: 'b' }, data: 'x', timeout: 5, responseType: 'json',
+        onload: (r) => window.out.push(['load', r.responseText]),
+        onerror: () => window.out.push(['error']),
+        connects: ['evil.test'],
+      });
+    `, api);
+    await wait();
+    assert.equal(JSON.stringify(calls), JSON.stringify([{ method: 'POST', url: 'https://example.com/', headers: { A: 'b' }, data: 'x', timeout: 5, responseType: 'json' }]));
+    assert.equal(JSON.stringify(sandbox.out), '[["load","hi"]]');
+  });
+
+  it('calls onerror, ontimeout and onabort for those results', async () => {
+    for (const type of ['error', 'timeout', 'abort']) {
+      const { api } = requestApp({ type, response: { status: 0, error: type } });
+      const sandbox = run(meta(['GM_xmlhttpRequest']), `
+        window.out = [];
+        GM_xmlhttpRequest({ url: 'https://example.com/', on${type}: (r) => window.out.push(r.error) });
+      `, api);
+      await wait();
+      assert.equal(JSON.stringify(sandbox.out), JSON.stringify([type]));
+    }
+  });
+
+  it('survives a handler that throws and a missing handler', async () => {
+    const { api } = requestApp();
+    run(meta(['GM_xmlhttpRequest']), "GM_xmlhttpRequest({ url: 'https://example.com/', onload: () => { throw new Error('x'); } }); GM_xmlhttpRequest({ url: 'https://example.com/' });", { ...api });
+    await wait();
+  });
+
+  it('aborts through the returned control', () => {
+    const { api, aborted } = requestApp();
+    run(meta(['GM_xmlhttpRequest']), "GM_xmlhttpRequest({ url: 'https://example.com/' }).abort();", api);
+    assert.deepEqual(aborted, [1]);
+  });
+
+  it('reports an error when the app bridge is missing', async () => {
+    const sandbox = run(meta(['GM_xmlhttpRequest']), `
+      window.out = [];
+      GM_xmlhttpRequest({ url: 'https://example.com/', onerror: (r) => window.out.push(r.error) });
+    `);
+    await wait();
+    assert.equal(JSON.stringify(sandbox.out), '["Requests are not available"]');
+  });
+
+  it('resolves the promise form with the response and rejects on errors', async () => {
+    const good = run(meta(['GM.xmlHttpRequest']), "window.done = GM.xmlHttpRequest({ url: 'https://example.com/' }).then((r) => r.responseText);", requestApp().api);
+    assert.equal(await good.done, 'hi');
+    const bad = run(meta(['GM.xmlHttpRequest']), `
+      window.done = GM.xmlHttpRequest({ url: 'https://example.com/' }).then(() => 'resolved', (r) => r.error);
+    `, requestApp({ type: 'error', response: { status: 0, error: 'nope' } }).api);
+    assert.equal(await bad.done, 'nope');
+  });
+
+  it('also calls handlers given to the promise form and can abort it', async () => {
+    const { api, aborted } = requestApp();
+    const sandbox = run(meta(['GM.xmlHttpRequest']), `
+      window.seen = [];
+      const promise = GM.xmlHttpRequest({ url: 'https://example.com/', onload: (r) => window.seen.push(r.status) });
+      window.done = promise;
+      promise.abort();
+    `, api);
+    await sandbox.done;
+    assert.equal(JSON.stringify(sandbox.seen), '[200]');
+    assert.deepEqual(aborted, [1]);
+  });
+
+  it('works with both spellings granted', () => {
+    const { api } = requestApp();
+    const sandbox = run(meta(['GM_xmlhttpRequest', 'GM.xmlHttpRequest']), 'window.types = [typeof GM_xmlhttpRequest, typeof GM.xmlHttpRequest].join();', api);
+    assert.equal(sandbox.types, 'function,function');
+  });
+});

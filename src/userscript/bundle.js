@@ -17,6 +17,7 @@ export function createBundle(meta, script, { requires = [], resources = {}, loca
       excludes: meta.excludes,
       excludeMatches: meta.excludeMatches,
       grants: meta.grants,
+      connects: meta.connects,
       runAt: meta.runAt,
     },
   };
@@ -50,6 +51,8 @@ export function injectable(bundle, token) {
     `  const token = ${JSON.stringify(token)};`,
     '  return Object.freeze({',
     '    ...bridge,',
+    '    request: (details, callback) => bridge.request(token, details, callback),',
+    '    abortRequest: (id) => bridge.abortRequest(token, id),',
     '    getValues: () => bridge.getValues(token),',
     '    setValue: (id, key, raw) => bridge.setValue(token, key, raw),',
     '    deleteValue: (id, key) => bridge.deleteValue(token, key),',

@@ -15,6 +15,7 @@ import { createInstalled } from './userscript/installed.js';
 import { createSettings } from './launcher/settings.js';
 import { createLauncher } from './launcher/window.js';
 import { loadRegistry, registryWarnings } from './userscript/registry.js';
+import { createRequester } from './userscript/request.js';
 import { createStore } from './userscript/store.js';
 import { isOffscreen, offscreenSwitches, offscreenWindowOptions } from './offscreen.js';
 
@@ -296,9 +297,13 @@ function frameKey(event) {
   return `${event.processId}:${event.frameId}`;
 }
 
-function scriptFor(event, token) {
+function grantFor(event, token) {
   if (!trusted(event) || typeof token !== 'string') return undefined;
   return grants.get(frameKey(event))?.get(token);
+}
+
+function scriptFor(event, token) {
+  return grantFor(event, token)?.id;
 }
 
 function getStore() {
@@ -342,9 +347,13 @@ async function injectGame(event) {
   const bundle = await readBundle();
   if (!bundle || !runsOn(bundle, event.senderFrame.url)) return none;
   const plugins = await getInstalled().enabledBundles();
-  const ids = [bundle, ...plugins.map((plugin) => plugin.bundle)].map((text) => scriptId(bundleInfo(text)));
+  const infos = [bundle, ...plugins.map((plugin) => plugin.bundle)].map((text) => bundleInfo(text));
+  const ids = infos.map((info) => scriptId(info));
   const tokens = ids.map(() => randomUUID());
-  grants.set(frameKey(event), new Map(tokens.map((token, index) => [token, ids[index]])));
+  grants.set(frameKey(event), new Map(tokens.map((token, index) => [token, {
+    id: ids[index],
+    connects: Array.isArray(infos[index]?.connects) ? infos[index].connects : [],
+  }])));
   const [values, ...scripts] = await Promise.all([
     Promise.all(ids.map(async (id, index) => [tokens[index], await getStore().get(id)])),
     ...['wait.js', 'app.js', 'signin.js'].map((name) => {
@@ -365,6 +374,32 @@ ipcMain.handle('inject:scripts', async (event) => {
   if (trusted(event)) return injectGame(event);
   if (embedded(event)) return injectEmbedded(event);
   return { scripts: [], values: {} };
+});
+
+const requester = createRequester();
+const requests = new Map();
+const maxRequests = 10;
+
+ipcMain.handle('gm:request', async (event, token, id, details) => {
+  const grant = grantFor(event, token);
+  const prefix = `${frameKey(event)}:${token}:`;
+  const key = `${prefix}${id}`;
+  const refuse = (error) => ({ type: 'error', response: { status: 0, error } });
+  if (!grant) return refuse('Requests are not allowed here');
+  if (!Number.isInteger(id) || requests.has(key)) return refuse('Invalid request');
+  if ([...requests.keys()].filter((entry) => entry.startsWith(prefix)).length >= maxRequests) return refuse('Too many requests at once');
+  const controller = new AbortController();
+  requests.set(key, controller);
+  try {
+    return await requester(details, grant.connects, controller.signal);
+  } finally {
+    requests.delete(key);
+  }
+});
+
+ipcMain.on('gm:request:abort', (event, token, id) => {
+  if (!grantFor(event, token)) return;
+  requests.get(`${frameKey(event)}:${token}:${id}`)?.abort();
 });
 
 ipcMain.on('gm:set', (event, token, key, raw) => {

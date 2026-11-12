@@ -41,6 +41,63 @@ const definitions = {
 
 const values = ['GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_listValues'];
 
+const request = [
+  'const __GM_request = (details, finish) => {',
+  "  const api = typeof underscriptApp === 'object' ? underscriptApp : {};",
+  '  const { method, url, headers, data, timeout, responseType } = details;',
+  '  try {',
+  '    const id = api.request({ method, url, headers, data, timeout, responseType }, finish);',
+  '    return { abort: () => api.abortRequest(id) };',
+  '  } catch (e) {',
+  "    Promise.resolve().then(() => finish('error', { status: 0, error: 'Requests are not available' }));",
+  '    return { abort: () => {} };',
+  '  }',
+  '};',
+  'const __GM_xhr = (details = {}) => __GM_request(details, (type, response) => {',
+  '  const handler = details[`on${type}`];',
+  "  if (typeof handler !== 'function') return;",
+  '  try {',
+  '    handler(response);',
+  '  } catch (e) {',
+  '    console.error(e);',
+  '  }',
+  '});',
+].join('\n');
+
+const promiseRequest = [
+  'const GM = {',
+  '  xmlHttpRequest: (details = {}) => {',
+  '    let control;',
+  '    const promise = new Promise((resolve, reject) => {',
+  '      const settle = (name, done) => (response) => {',
+  '        try {',
+  "          if (typeof details[name] === 'function') details[name](response);",
+  '        } finally {',
+  '          done(response);',
+  '        }',
+  '      };',
+  '      control = __GM_xhr({',
+  '        ...details,',
+  "        onload: settle('onload', resolve),",
+  "        onerror: settle('onerror', reject),",
+  "        ontimeout: settle('ontimeout', reject),",
+  "        onabort: settle('onabort', reject),",
+  '      });',
+  '    });',
+  '    promise.abort = () => control.abort();',
+  '    return promise;',
+  '  },',
+  '};',
+].join('\n');
+
+function requestApi(grants) {
+  return [
+    request,
+    ...grants.includes('GM_xmlhttpRequest') ? ['const GM_xmlhttpRequest = __GM_xhr;'] : [],
+    ...grants.includes('GM.xmlHttpRequest') ? [promiseRequest] : [],
+  ];
+}
+
 export function scriptId({ namespace = '', name = 'unnamed' } = {}) {
   return `${namespace}|${name}`;
 }
@@ -49,5 +106,10 @@ export function gmApi(meta) {
   const grants = meta.grants ?? [];
   const granted = Object.entries(definitions).filter(([name]) => grants.includes(name));
   const needsStore = values.some((name) => grants.includes(name));
-  return [...needsStore ? [store(scriptId(meta))] : [], ...granted.map(([, definition]) => definition)];
+  const needsRequest = ['GM_xmlhttpRequest', 'GM.xmlHttpRequest'].some((name) => grants.includes(name));
+  return [
+    ...needsStore ? [store(scriptId(meta))] : [],
+    ...granted.map(([, definition]) => definition),
+    ...needsRequest ? requestApi(grants) : [],
+  ];
 }

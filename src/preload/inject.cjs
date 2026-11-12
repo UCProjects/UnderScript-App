@@ -5,6 +5,7 @@ console.log(`UnderScript App(v${version}): Loaded`);
 
 let listening = false;
 let stored = {};
+let lastRequest = 0;
 
 contextBridge.exposeInMainWorld('underscriptApp', {
   version,
@@ -13,6 +14,16 @@ contextBridge.exposeInMainWorld('underscriptApp', {
     listening = true;
     ipcRenderer.on('toast', (_, data) => callback(data));
   },
+  request: (token, details, callback) => {
+    lastRequest += 1;
+    const id = lastRequest;
+    ipcRenderer.invoke('gm:request', token, id, details).then(
+      (result) => callback(result.type, result.response),
+      (error) => callback('error', { status: 0, error: String(error?.message ?? error) }),
+    );
+    return id;
+  },
+  abortRequest: (token, id) => ipcRenderer.send('gm:request:abort', token, id),
   getValues: (token) => ({ ...stored[token] }),
   setValue: (token, key, raw) => {
     if (!stored[token] || typeof key !== 'string' || typeof raw !== 'string') return;
