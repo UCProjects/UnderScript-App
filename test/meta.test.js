@@ -68,8 +68,8 @@ describe('parseMeta', () => {
   });
 
   it('accepts directives without a space after the slashes', () => {
-    const meta = parseMeta(wrap('//@require\t\tfile://D:\\scripts\\a.js', '//@name no space'));
-    assert.deepEqual(meta.requires.map((r) => r.url), ['file://D:\\scripts\\a.js']);
+    const meta = parseMeta(wrap('//@require\t\thttps://example.com/a.js', '//@name no space'));
+    assert.deepEqual(meta.requires.map((r) => r.url), ['https://example.com/a.js']);
     assert.equal(meta.name, 'no space');
   });
 
@@ -159,15 +159,35 @@ describe('parseMeta', () => {
       ]);
     });
 
-    it('keeps ordinary fragments and rejects malformed digests', () => {
+    it('keeps ordinary fragments', () => {
+      for (const target of ['https://example.com/a.js#section', 'https://example.com/a.js#shake', 'https://example.com/a.js#']) {
+        const meta = parseMeta(wrap(`// @require ${target}`));
+        assert.deepEqual(meta.requires, [{ url: target, integrity: [] }]);
+      }
+    });
+
+    it('normalizes the url and keeps the pin out of it', () => {
+      const meta = parseMeta(wrap(`// @require HTTPS://Example.com#sha256=${HEX256}`, '// @resource page HTTPS://Example.COM/A.html'));
+      assert.deepEqual(meta.requires, [{ url: 'https://example.com/', integrity: [{ algorithm: 'sha256', hash: HEX256 }] }]);
+      assert.equal(meta.resources.page.url, 'https://example.com/A.html');
+    });
+
+    it('rejects urls it cannot parse', () => {
+      for (const target of ['lib.js', '//cdn.example.com/lib.js', 'not']) {
+        assert.throws(() => parseMeta(wrap(`// @require ${target}`)), /Invalid url/, target);
+      }
+    });
+
+    it('rejects a script whose integrity hash cannot be used', () => {
       for (const target of [
-        'https://example.com/a.js#section',
         'https://example.com/a.js#sha256=tooshort',
         `https://example.com/a.js#sha256=${HEX256},nonsense`,
         `https://example.com/a.js#md5=${'c'.repeat(32)}`,
+        'https://example.com/a.js#sha1=abc',
+        'https://example.com/a.js#sha256',
       ]) {
-        const meta = parseMeta(wrap(`// @require ${target}`));
-        assert.deepEqual(meta.requires, [{ url: target, integrity: [] }]);
+        assert.throws(() => parseMeta(wrap(`// @require ${target}`)), /Unusable integrity hash/, target);
+        assert.throws(() => parseMeta(wrap(`// @resource data ${target}`)), /Unusable integrity hash/, target);
       }
     });
   });

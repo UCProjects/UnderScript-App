@@ -1,6 +1,7 @@
 const blockPattern = /^[ \t]*\/\/[ \t]*==UserScript==[ \t]*\r?\n([\s\S]*?)^[ \t]*\/\/[ \t]*==\/UserScript==/m;
 const linePattern = /^[ \t]*\/\/[ \t]*@(\S+)(?:[ \t]+(.*?))?[ \t]*$/;
 const resourcePattern = /^(\S+)\s+(\S+)/;
+const pinPattern = /^(?:md5|sha\d+)(?:[=-]|$)/i;
 const integrityPattern = /^(sha256|sha384|sha512)[=-](.+)$/;
 const digestSizes = { sha256: 32, sha384: 48, sha512: 64 };
 const ignoredRequires = new Set([
@@ -43,16 +44,23 @@ function decodeHash(value, algorithm) {
 }
 
 function parseTarget(value) {
-  const split = value.indexOf('#');
-  if (split < 0) return { url: value, integrity: [] };
+  let url;
+  try {
+    url = new URL(value);
+  } catch (e) {
+    throw new Error(`Invalid url in meta block: ${value}`);
+  }
+  const fragment = url.hash.slice(1);
+  if (!pinPattern.test(fragment.trim())) return { url: url.href, integrity: [] };
+  url.hash = '';
   const integrity = [];
-  for (const part of value.slice(split + 1).split(/[;,]/)) {
+  for (const part of fragment.split(/[;,]/)) {
     const match = integrityPattern.exec(part.trim());
     const hash = match && decodeHash(match[2], match[1]);
-    if (!hash) return { url: value, integrity: [] };
+    if (!hash) throw new Error(`Unusable integrity hash in ${value} (use sha256, sha384 or sha512)`);
     integrity.push({ algorithm: match[1], hash });
   }
-  return { url: value.slice(0, split), integrity };
+  return { url: url.href, integrity };
 }
 
 export function parseMeta(source) {
