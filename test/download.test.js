@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { afterEach, describe, it, mock } from 'node:test';
-import { cachedDownload, clearDownloads, download } from '../src/userscript/download.js';
+import { afterEach, beforeEach, describe, it, mock } from 'node:test';
+import { createDownloader, download } from '../src/userscript/download.js';
 
 const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
 const sha512 = (text) => crypto.createHash('sha512').update(text).digest('hex');
@@ -86,8 +86,12 @@ describe('download', () => {
     await assert.rejects(download({ url: 'https://example.com/big.js' }), /too large/);
   });
 
-  describe('cachedDownload', () => {
-    afterEach(() => clearDownloads());
+  describe('createDownloader', () => {
+    let cachedDownload;
+
+    beforeEach(() => {
+      cachedDownload = createDownloader();
+    });
 
     it('fetches each url once', async () => {
       const fetchMock = respond('payload');
@@ -96,6 +100,13 @@ describe('download', () => {
       assert.deepEqual(results, ['payload', 'payload']);
       assert.equal(await cachedDownload({ url: 'https://example.com/a.js' }), 'payload');
       assert.equal(fetchMock.mock.callCount(), 1);
+    });
+
+    it('does not share downloads between downloaders', async () => {
+      const fetchMock = respond('payload');
+      await cachedDownload({ url: 'https://example.com/a.js' });
+      await createDownloader()({ url: 'https://example.com/a.js' });
+      assert.equal(fetchMock.mock.callCount(), 2);
     });
 
     it('keeps different urls and different pins apart', async () => {

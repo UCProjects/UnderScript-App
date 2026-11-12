@@ -2,7 +2,6 @@ import crypto from 'crypto';
 
 const timeout = 60000;
 const limit = 10 * 1024 * 1024;
-const cache = new Map();
 
 export async function request(url, headers) {
   const res = await fetch(url, {
@@ -34,17 +33,16 @@ export async function download({ url, integrity = [] }) {
   return String(body);
 }
 
-export function cachedDownload(target) {
-  const key = JSON.stringify([target.url, target.integrity ?? []]);
-  if (!cache.has(key)) {
-    cache.set(key, download(target).catch((err) => {
-      cache.delete(key);
-      throw err;
-    }));
-  }
-  return cache.get(key);
-}
-
-export function clearDownloads() {
-  cache.clear();
+export function createDownloader() {
+  const cache = new Map();
+  return (target) => {
+    const key = JSON.stringify([target.url, target.integrity ?? []]);
+    if (!cache.has(key)) {
+      cache.set(key, download(target).catch((err) => {
+        cache.delete(key);
+        throw err;
+      }));
+    }
+    return cache.get(key);
+  };
 }

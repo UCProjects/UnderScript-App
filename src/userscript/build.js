@@ -1,17 +1,18 @@
 import { createBundle } from './bundle.js';
-import { cachedDownload, verifyIntegrity } from './download.js';
+import { createDownloader, verifyIntegrity } from './download.js';
 import { parseMeta } from './meta.js';
 
 export async function fetchAssets(meta) {
+  const downloadOnce = createDownloader();
   const requires = await Promise.all(meta.requires.map(async (target) => ({
     url: target.url,
     integrity: target.integrity,
-    code: await cachedDownload(target),
+    code: await downloadOnce(target),
   })));
   const resources = Object.fromEntries(await Promise.all(Object.entries(meta.resources).map(async ([name, target]) => [name, {
     url: target.url,
     integrity: target.integrity,
-    code: await cachedDownload(target),
+    code: await downloadOnce(target),
   }])));
   return { requires, resources };
 }

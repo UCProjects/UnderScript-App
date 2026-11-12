@@ -6,7 +6,6 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { assembleBundle, buildBundle } from '../src/userscript/build.js';
 import { bundleFormat, createBundle } from '../src/userscript/bundle.js';
-import { clearDownloads } from '../src/userscript/download.js';
 import { createInstalled } from '../src/userscript/installed.js';
 import { parseMeta } from '../src/userscript/meta.js';
 import { rebuildStale } from '../src/userscript/rebuild.js';
@@ -52,7 +51,6 @@ describe('bundleFormat', () => {
 });
 
 describe('buildBundle and assembleBundle', () => {
-  beforeEach(() => clearDownloads());
   afterEach(() => mock.restoreAll());
 
   it('returns the downloaded assets with the bundle', async () => {
@@ -98,7 +96,6 @@ describe('rebuildStale', () => {
   let installed;
 
   beforeEach(async () => {
-    clearDownloads();
     dir = await file.mkdtemp(path.join(os.tmpdir(), 'rebuild-'));
     installed = createInstalled(dir);
   });
