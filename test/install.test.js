@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { createInstalled } from '../src/userscript/installed.js';
 import { createBundle } from '../src/userscript/bundle.js';
-import { createInstaller, describeResult, describeScript } from '../src/userscript/install.js';
+import { createInstaller, describeResult, outsideGame, scriptInfo } from '../src/userscript/install.js';
 import { parseMeta } from '../src/userscript/meta.js';
 
 const RELEASE = 'https://github.com/elytrafae/prettycards/releases/latest/download/prettycards.user.js';
@@ -64,24 +64,51 @@ beforeEach(async () => {
 
 afterEach(() => file.rm(dir, { recursive: true, force: true }));
 
-describe('describeScript', () => {
+describe('scriptInfo', () => {
   it('summarizes what the script will do', () => {
-    const meta = parseMeta(source(['// @author someone', '// @require https://unpkg.com/a.js', '// @require https://unpkg.com/b.js', '// @resource r https://cdn.example/r.json']));
-    assert.deepEqual(describeScript(meta, registry[0]), [
-      `Source: ${RELEASE}`,
-      'Author: someone',
-      'Runs on: https://undercards.net/*',
-      'Permissions: GM_getValue',
-      'Also loads code from: unpkg.com, cdn.example',
-    ]);
+    const meta = parseMeta(source(['// @author someone', '// @connect api.example.com', '// @require https://unpkg.com/a.js', '// @require https://unpkg.com/b.js', '// @resource r https://cdn.example/r.json']));
+    assert.deepEqual(scriptInfo(meta, registry[0]), {
+      source: RELEASE,
+      author: 'someone',
+      pages: [],
+      permissions: [{ text: 'Save and read its own data', names: ['GM_getValue'] }],
+      connects: ['api.example.com'],
+      code: ['unpkg.com', 'cdn.example'],
+      noframes: false,
+    });
   });
 
-  it('falls back to the registry author and says when there are no permissions', () => {
+  it('falls back to the registry author and lists no permissions for none', () => {
     const meta = parseMeta(source().replace('// @grant GM_getValue', '// @grant none'));
-    const lines = describeScript(meta, registry[0]);
-    assert.ok(lines.includes('Author: elytrafae'));
-    assert.ok(lines.includes('Permissions: none'));
-    assert.equal(lines.some((line) => line.startsWith('Also loads')), false);
+    const info = scriptInfo(meta, registry[0]);
+    assert.equal(info.author, 'elytrafae');
+    assert.deepEqual(info.permissions, []);
+    assert.deepEqual(info.code, []);
+  });
+});
+
+describe('outsideGame', () => {
+  it('drops patterns that only point at the game', () => {
+    assert.deepEqual(outsideGame([
+      'https://undercards.net/*',
+      'https://*.undercards.net/*',
+      '*://*.undercards.net/Game*',
+      'https://www.undercards.net/*',
+      'https://*undercards.net/*/*',
+      'http://undercards.net',
+    ]), []);
+  });
+
+  it('keeps patterns for other sites, including look-alikes', () => {
+    const others = [
+      'https://undercard.feildmaster.com/*',
+      'https://sernon158.github.io/uc-editor/*',
+      'https://undercards.net.evil.example/*',
+      'https://notundercards.net/*',
+      '/undercards\.net/',
+      '*',
+    ];
+    assert.deepEqual(outsideGame(others), others);
   });
 });
 
@@ -124,7 +151,10 @@ describe('install', () => {
     assert.equal(request.kind, 'new');
     assert.equal(request.name, 'Test Plugin');
     assert.equal(request.version, '1.0.0');
-    assert.ok(request.details.includes('Permissions: GM_getValue'));
+    assert.deepEqual(request.info.permissions, [{ text: 'Save and read its own data', names: ['GM_getValue'] }]);
+    assert.deepEqual(request.changes, []);
+    assert.equal(request.script, source());
+    assert.equal(request.previous, undefined);
     const [record] = await installed.list();
     assert.equal(record.name, 'Test Plugin');
     assert.equal(record.id, 'https://example.com/|Test Plugin');
@@ -167,7 +197,13 @@ describe('install', () => {
     const [request] = calls.confirm;
     assert.equal(request.kind, 'changed');
     assert.equal(request.previousVersion, '1.0.0');
-    assert.deepEqual(request.details, ['+ @connect evil.example', '+ @grant GM_xmlhttpRequest']);
+    assert.deepEqual(request.changes, [
+      { type: 'added', key: 'connect', value: 'evil.example' },
+      { type: 'added', key: 'grant', value: 'GM_xmlhttpRequest' },
+    ]);
+    assert.deepEqual(request.info.connects, ['evil.example']);
+    assert.equal(request.previous, source());
+    assert.equal(request.script, source(['// @grant GM_xmlhttpRequest', '// @connect evil.example'], '2.0.0'));
     assert.equal((await installed.get(RELEASE)).version, '2.0.0');
   });
 
@@ -184,7 +220,7 @@ describe('install', () => {
     scripts.set(RELEASE, source([], '1.0.1', 'Different Name'));
     await installer(RELEASE);
     assert.equal(calls.confirm.at(-1).kind, 'changed');
-    assert.ok(calls.confirm.at(-1).details.includes('+ @name Different Name'));
+    assert.ok(calls.confirm.at(-1).changes.some(({ type, key, value }) => type === 'added' && key === 'name' && value === 'Different Name'));
   });
 
   it('fails without installing when the download fails', async () => {

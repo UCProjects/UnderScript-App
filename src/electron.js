@@ -13,6 +13,7 @@ import { scriptId } from './userscript/gm.js';
 import { createInstaller, describeResult } from './userscript/install.js';
 import { createInstalled } from './userscript/installed.js';
 import { createSettings } from './launcher/settings.js';
+import { createConfirmation } from './launcher/confirmWindow.js';
 import { createLauncher } from './launcher/window.js';
 import { loadRegistry, registryWarnings } from './userscript/registry.js';
 import { pruneScript } from './userscript/pending.js';
@@ -329,27 +330,11 @@ function getInstalled() {
   return installed;
 }
 
-async function confirmInstall({ kind, name, version, previousVersion, details }) {
-  const shown = details.slice(0, 20);
-  if (details.length > shown.length) shown.push(`...and ${details.length - shown.length} more`);
-  const { response } = await dialog.showMessageBox(BrowserWindow.getFocusedWindow() ?? undefined, kind === 'new' ? {
-    type: 'question',
-    buttons: ['Install', 'Cancel'],
-    defaultId: 1,
-    cancelId: 1,
-    title: 'Install plugin',
-    message: `Install "${name}" v${version}?`,
-    detail: `${shown.join('\n')}\n\nPlugins run on undercards.net with access to your account. Only install plugins you trust.`,
-  } : {
-    type: 'warning',
-    buttons: ['Update', 'Cancel'],
-    defaultId: 1,
-    cancelId: 1,
-    title: 'Update plugin',
-    message: `"${name}" changed more than its version (v${previousVersion} to v${version})`,
-    detail: `${shown.join('\n')}\n\nOnly update if you still trust this plugin.`,
-  });
-  return response === 0;
+let confirmation;
+
+function confirmInstall(request) {
+  confirmation ??= createConfirmation();
+  return confirmation(request, BrowserWindow.getFocusedWindow() ?? undefined);
 }
 
 let installer;

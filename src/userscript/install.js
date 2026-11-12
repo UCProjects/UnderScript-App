@@ -1,6 +1,7 @@
 import { scriptId } from './gm.js';
-import { describeChanges, sameMeta } from './installed.js';
+import { changeList, sameMeta } from './installed.js';
 import { parseMeta } from './meta.js';
+import { describePermissions } from './permissions.js';
 import { findEntry } from './registry.js';
 
 function hostsOf(targets) {
@@ -15,17 +16,22 @@ function hostsOf(targets) {
   return [...hosts];
 }
 
-export function describeScript(meta, entry) {
-  const pages = [...meta.matches, ...meta.includes];
-  const permissions = meta.grants.filter((grant) => grant !== 'none');
-  const code = hostsOf([...meta.requires, ...Object.values(meta.resources)]);
-  return [
-    `Source: ${entry.url}`,
-    `Author: ${meta.author ?? entry.author ?? 'unknown'}`,
-    `Runs on: ${pages.join(', ') || 'no pages'}`,
-    `Permissions: ${permissions.join(', ') || 'none'}`,
-    ...code.length ? [`Also loads code from: ${code.join(', ')}`] : [],
-  ];
+const gamePattern = /^(?:\*|https?):\/\/(?:\*\.?)?(?:www\.)?undercards\.net(?::\d+)?(?:\/|$)/i;
+
+export function outsideGame(patterns) {
+  return patterns.filter((pattern) => !gamePattern.test(pattern));
+}
+
+export function scriptInfo(meta, entry) {
+  return {
+    source: entry.url,
+    author: meta.author ?? entry.author ?? 'unknown',
+    pages: outsideGame([...meta.matches, ...meta.includes]),
+    permissions: describePermissions(meta.grants),
+    connects: meta.connects,
+    code: hostsOf([...meta.requires, ...Object.values(meta.resources)]),
+    noframes: meta.noframes,
+  };
 }
 
 export function describeResult({ status, name, version, previousVersion, error }) {
@@ -56,13 +62,16 @@ export function createInstaller({ loadRegistry, fetchScript, build, installed, c
     const existing = await installed.get(entry.url);
     const changed = existing && !sameMeta(existing.meta, meta);
     if (!existing || changed) {
+      const previous = existing ? await installed.assetsOf(entry.url).then((stored) => stored?.script || undefined, () => undefined) : undefined;
       const approved = await confirm({
         kind: existing ? 'changed' : 'new',
         name: meta.name,
         version: meta.version,
         previousVersion: existing?.version,
-        details: existing ? describeChanges(existing.meta, meta) : describeScript(meta, entry),
-        entry,
+        info: scriptInfo(meta, entry),
+        changes: existing ? changeList(existing.meta, meta) : [],
+        script: source,
+        previous,
       });
       if (!approved) return { status: 'cancelled', entry };
     }

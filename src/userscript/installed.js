@@ -19,10 +19,10 @@ export function sameMeta(before, after) {
     && keys.every((key) => Object.hasOwn(b, key) && JSON.stringify(a[key]) === JSON.stringify(b[key]));
 }
 
-export function describeChanges(before, after) {
+export function changeList(before, after) {
   const a = comparable(before);
   const b = comparable(after);
-  const lines = [];
+  const changes = [];
   for (const key of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
     const was = a[key] ?? [];
     const now = b[key] ?? [];
@@ -30,13 +30,22 @@ export function describeChanges(before, after) {
     const removed = was.filter((entry) => !now.includes(entry));
     const added = now.filter((entry) => !was.includes(entry));
     if (!removed.length && !added.length) {
-      lines.push(`~ @${key} (order changed)`);
+      changes.push({ type: 'moved', key });
       continue;
     }
-    lines.push(...removed.map((value) => `- @${key} ${value}`.trim()));
-    lines.push(...added.map((value) => `+ @${key} ${value}`.trim()));
+    changes.push(...removed.map((value) => ({ type: 'removed', key, value })));
+    changes.push(...added.map((value) => ({ type: 'added', key, value })));
   }
-  return lines;
+  return changes;
+}
+
+const marks = { moved: '~', removed: '-', added: '+' };
+
+export function describeChanges(before, after) {
+  return changeList(before, after).map(({ type, key, value }) => {
+    if (type === 'moved') return `~ @${key} (order changed)`;
+    return `${marks[type]} @${key} ${value}`.trim();
+  });
 }
 
 export function createInstalled(dir) {
