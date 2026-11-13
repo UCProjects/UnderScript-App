@@ -1,7 +1,7 @@
 # UnderScript App Changelog
 
-## [Unreleased]
-1. You can now install community plugins in the app: click a plugin's download link and the app shows what it runs on and what it can do before it installs
+## Version 1.7.0 (2026-11-12)
+1. You can now install community plugins in the app: click a plugin's download link and the app shows an overview before it installs
 1. Added a plugin manager: it opens when the app starts if you have plugins installed (disableable), from Manage plugins in the right-click menu, or with Ctrl+Shift+P
 1. Added Home and Copy page address to the right-click menu (also Alt+Home and Ctrl+L), and the window title now shows the page you are on
 1. Holding Shift while you right-click opens the app's menu on the Game and Spectate pages, where the game blocks it, so card info and cancelling an attack keep working on a plain right-click
