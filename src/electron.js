@@ -161,20 +161,21 @@ function createWindow() {
 
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'keyUp') return;
-    if (input.control && input.shift && input.key.toLowerCase() === 'i' || input.key === 'F12') {
+    const command = process.platform === 'darwin' ? input.meta : input.control;
+    if (command && input.shift && input.key.toLowerCase() === 'i' || input.key === 'F12') {
       event.preventDefault();
       showDevTools();
-    } else if (input.key === 'F5' || input.control && input.key.toLowerCase() === 'r') {
+    } else if (input.key === 'F5' || command && input.key.toLowerCase() === 'r') {
       win.reload();
     } else if (input.key === 'F11') {
       win.setFullScreen(!win.isFullScreen());
     } else if (input.alt && input.key === 'Home') {
       event.preventDefault();
       goHome();
-    } else if (input.control && input.key.toLowerCase() === 'l') {
+    } else if (command && input.key.toLowerCase() === 'l') {
       event.preventDefault();
       copyAddress();
-    } else if (input.control && input.shift && input.key.toLowerCase() === 'p') {
+    } else if (command && input.shift && input.key.toLowerCase() === 'p') {
       event.preventDefault();
       getLauncher().show('manager');
     }
