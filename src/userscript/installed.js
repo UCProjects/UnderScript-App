@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { promises as file } from 'fs';
 import path from 'path';
 import { bundleFormat, bundleInfo, runsOn } from './bundle.js';
+import { iconLimit, imageType } from './icon.js';
 
 function comparable(meta) {
   const values = {};
@@ -132,11 +133,11 @@ export function createInstalled(dir) {
     },
 
     async iconOf(url) {
-      const record = (await load()).find((entry) => entry.url === url);
-      if (!record?.iconType) return undefined;
+      if (!(await load()).some((entry) => entry.url === url)) return undefined;
       try {
         const data = await file.readFile(path.join(folder(url), 'icon.bin'));
-        return `data:${record.iconType};base64,${data.toString('base64')}`;
+        const type = data.length <= iconLimit ? imageType(data) : undefined;
+        return type && `data:${type};base64,${data.toString('base64')}`;
       } catch (e) {
         return undefined;
       }
@@ -179,7 +180,6 @@ export function createInstalled(dir) {
         name,
         pluginName,
         id,
-        iconType: icon ? icon.type : existing?.iconType,
         source: existing ? existing.source : source,
         version,
         format,
@@ -212,6 +212,23 @@ export function createInstalled(dir) {
       if (!record) return false;
       record.enabled = Boolean(enabled);
       await persist(record);
+      return true;
+    }),
+
+    move: (url, step) => serialize(async () => {
+      const records = await load();
+      const from = records.findIndex((entry) => entry.url === url);
+      const to = from + step;
+      if (from < 0 || !Number.isInteger(step) || to < 0 || to >= records.length) return false;
+      const [moved] = records.splice(from, 1);
+      records.splice(to, 0, moved);
+      const changed = [];
+      records.forEach((record, index) => {
+        if (record.order === index + 1) return;
+        record.order = index + 1;
+        changed.push(record);
+      });
+      await Promise.all(changed.map(persist));
       return true;
     }),
 

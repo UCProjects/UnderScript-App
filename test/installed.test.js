@@ -155,6 +155,34 @@ describe('createInstalled', () => {
     assert.deepEqual((await installed.enabledBundles()).map((entry) => entry.url), [URL_A, URL_B]);
   });
 
+  it('moves a script up or down and the order survives a reload and an update', async () => {
+    const URL_C = 'https://example.com/c.user.js';
+    await installed.save({ url: URL_A, ...build('Alpha') });
+    await installed.save({ url: URL_B, ...build('Beta') });
+    await installed.save({ url: URL_C, ...build('Gamma') });
+    const names = async (source = installed) => (await source.list()).map((record) => record.name);
+    assert.equal(await installed.move(URL_C, -1), true);
+    assert.deepEqual(await names(), ['Alpha', 'Gamma', 'Beta']);
+    assert.equal(await installed.move(URL_A, 1), true);
+    assert.deepEqual(await names(), ['Gamma', 'Alpha', 'Beta']);
+    assert.deepEqual((await installed.enabledBundles()).map((entry) => entry.url), [URL_C, URL_A, URL_B]);
+    assert.deepEqual(await names(createInstalled(dir)), ['Gamma', 'Alpha', 'Beta']);
+    await installed.save({ url: URL_A, ...build('Alpha', [], '2.0.0') });
+    assert.deepEqual(await names(createInstalled(dir)), ['Gamma', 'Alpha', 'Beta']);
+    await installed.save({ url: 'https://example.com/d.user.js', ...build('Delta') });
+    assert.deepEqual(await names(), ['Gamma', 'Alpha', 'Beta', 'Delta']);
+  });
+
+  it('does not move a script past either end, an unknown script or by more than one', async () => {
+    await installed.save({ url: URL_A, ...build('Alpha') });
+    await installed.save({ url: URL_B, ...build('Beta') });
+    assert.equal(await installed.move(URL_A, -1), false);
+    assert.equal(await installed.move(URL_B, 1), false);
+    assert.equal(await installed.move('https://example.com/none.user.js', 1), false);
+    assert.equal(await installed.move(URL_A, 0.5), false);
+    assert.deepEqual((await installed.list()).map((record) => record.name), ['Alpha', 'Beta']);
+  });
+
   it('reports every installed plugin by its plugin name, disabled ones included', async () => {
     await installed.save({ url: URL_A, ...build('Alpha'), pluginName: 'Registry Alpha' });
     await installed.save({ url: URL_B, ...build('Beta', [], '2.5.0') });
@@ -169,7 +197,7 @@ describe('createInstalled', () => {
   });
 
   it('keeps an icon with the plugin, and keeps it when the plugin is saved again without one', async () => {
-    const icon = { type: 'image/png', data: Buffer.from([1, 2, 3]) };
+    const icon = { type: 'image/png', data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]) };
     await installed.save({ url: URL_A, ...build('Alpha'), icon });
     await installed.save({ url: URL_B, ...build('Beta') });
     const expected = `data:image/png;base64,${icon.data.toString('base64')}`;
@@ -182,6 +210,16 @@ describe('createInstalled', () => {
     const next = { type: 'image/gif', data: Buffer.from('GIF89a') };
     await installed.save({ url: URL_A, ...build('Alpha', [], '3.0.0'), icon: next });
     assert.equal(await installed.iconOf(URL_A), `data:image/gif;base64,${next.data.toString('base64')}`);
+  });
+
+  it('finds an icon file placed by hand and ignores one that is not an image', async () => {
+    await installed.save({ url: URL_A, ...build('Alpha') });
+    const base = path.join(dir, (await file.readdir(dir))[0], 'icon.bin');
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 9]);
+    await file.writeFile(base, png);
+    assert.equal(await installed.iconOf(URL_A), `data:image/png;base64,${png.toString('base64')}`);
+    await file.writeFile(base, 'not an image');
+    assert.equal(await installed.iconOf(URL_A), undefined);
   });
 
   it('leaves scripts marked noframes out of subframes only', async () => {

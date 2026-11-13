@@ -86,6 +86,7 @@ li input[type='checkbox'] {
 }
 
 .version {
+  overflow-wrap: anywhere;
   color: var(--muted);
   font-size: 12px;
 }
@@ -175,8 +176,39 @@ footer {
 
 .sub {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 2px 6px;
+}
+
+.order {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: -4px;
+}
+
+button.arrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 4px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 4px;
+}
+
+button.arrow:hover:not(:disabled),
+button.arrow:focus-visible {
+  color: var(--accent);
+  background: none;
+  outline: none;
+}
+
+button.arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 button.linkbutton {

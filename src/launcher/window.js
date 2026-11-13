@@ -51,6 +51,11 @@ export function createLauncher({ getInstalled, getWarnings, reinstall, settings 
     return getInstalled().setEnabled(url, enabled === true);
   });
 
+  ipcMain.handle('plugins:move', async (event, url, step) => {
+    if (!isCurrent(event) || typeof url !== 'string' || (step !== -1 && step !== 1)) return false;
+    return getInstalled().move(url, step);
+  });
+
   ipcMain.handle('plugins:remove', async (event, url) => {
     if (!isCurrent(event) || typeof url !== 'string') return false;
     return getInstalled().remove(url);
@@ -80,7 +85,7 @@ export function createLauncher({ getInstalled, getWarnings, reinstall, settings 
         return Promise.resolve({ outcome: 'focused', close() {} });
       }
       const win = new BrowserWindow({
-        width: 520,
+        width: 580,
         height: 580,
         minWidth: 400,
         minHeight: 360,

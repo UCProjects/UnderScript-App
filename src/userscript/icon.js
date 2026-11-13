@@ -7,7 +7,7 @@ const signatures = [
   ['image/x-icon', [0x00, 0x00, 0x01, 0x00]],
 ];
 
-function imageType(data) {
+export function imageType(data) {
   const found = signatures.find(([, bytes]) => bytes.every((byte, index) => data[index] === byte));
   if (found) return found[0];
   if (data.length > 12 && data.toString('latin1', 0, 4) === 'RIFF' && data.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';

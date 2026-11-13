@@ -26,6 +26,8 @@ const svgNamespace = 'http://www.w3.org/2000/svg';
 const symbols = {
   globe: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M3 12h18' }], ['path', { d: 'M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18' }]],
   code: [['path', { d: 'M8 7l-5 5l5 5M16 7l5 5l-5 5M14 4l-4 16' }]],
+  up: [['path', { d: 'M6 15l6-6l6 6' }]],
+  down: [['path', { d: 'M6 9l6 6l6-6' }]],
   bug: [
     ['ellipse', { cx: 12, cy: 14, rx: 5, ry: 6.5 }],
     ['path', { d: 'M9 7.5a3 3 0 0 1 6 0' }],
@@ -91,7 +93,20 @@ function pluginIcon(plugin) {
   return element('div', { className: 'plugin-icon placeholder', textContent: initials(plugin.name) });
 }
 
-function row(plugin) {
+function arrowButton(plugin, step, disabled) {
+  const label = step < 0 ? 'Load earlier' : 'Load later';
+  const button = element('button', { type: 'button', className: 'arrow', disabled }, symbol(step < 0 ? 'up' : 'down'));
+  button.dataset.step = step;
+  button.setAttribute('aria-label', `${label}: ${plugin.name}`);
+  if (!disabled) attachTooltip(button, label, 'Plugins run from the top of the list down');
+  button.addEventListener('click', async () => {
+    hideTooltip();
+    if (await window.launcher.move(plugin.url, step)) await render(plugin.url, step);
+  });
+  return button;
+}
+
+function row(plugin, index, count) {
   const toggle = element('input', { type: 'checkbox', checked: plugin.enabled, title: 'Enabled' });
   const item = element('li', { className: plugin.enabled ? '' : 'disabled' });
   item.dataset.url = plugin.url;
@@ -130,7 +145,12 @@ function row(plugin) {
     reinstall.disabled = false;
   });
 
+  const arrows = element('div', { className: 'order' },
+    arrowButton(plugin, -1, index === 0),
+    arrowButton(plugin, 1, index === count - 1));
+
   item.append(
+    arrows,
     toggle,
     pluginIcon(plugin),
     element('div', { className: 'info' },
@@ -158,13 +178,17 @@ async function markWarnings() {
   }
 }
 
-async function render() {
+async function render(focusUrl, step) {
   const plugins = await window.launcher.list();
   summary.textContent = plugins.length
     ? `${plugins.length} plugin${plugins.length === 1 ? '' : 's'} installed. Untick a plugin to turn it off.`
     : 'No plugins installed.';
-  list.replaceChildren(...plugins.length ? plugins.map(row) : [element('li', { className: 'empty' }, 'Nothing here yet.')]);
+  list.replaceChildren(...plugins.length ? plugins.map((plugin, index) => row(plugin, index, plugins.length)) : [element('li', { className: 'empty' }, 'Nothing here yet.')]);
   markWarnings().catch(() => {});
+  if (focusUrl === undefined) return;
+  const moved = [...list.querySelectorAll('li[data-url]')].find((item) => item.dataset.url === focusUrl);
+  const same = moved?.querySelector(`button.arrow[data-step="${step}"]`);
+  (same?.disabled ? moved.querySelector('button.arrow:not(:disabled)') : same)?.focus();
 }
 
 document.querySelector('main').addEventListener('scroll', hideTooltip);
