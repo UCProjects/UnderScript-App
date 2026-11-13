@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UnderScript App</title>
+<meta name="description" content="A desktop app for playing Undercards with UnderScript already built in.">
+<meta property="og:title" content="UnderScript App">
+<meta property="og:description" content="Play Undercards with UnderScript built in. Sign in once and install plugins in a click.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#14161c">
+<style>
+:root {
+  --bg: #14161c;
+  --surface: #1d2029;
+  --text: #e8e9ee;
+  --muted: #a3a7b5;
+  --accent: #7c9cff;
+  --accent-text: #0d1020;
+  --border: #2b2f3b;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7fb;
+    --surface: #ffffff;
+    --text: #1b1d26;
+    --muted: #5b6070;
+    --accent: #3f5fe0;
+    --accent-text: #ffffff;
+    --border: #dde0ea;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main, header, footer {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+header { padding-top: 64px; text-align: center; }
+h1 { font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 12px; }
+h2 { font-size: 1.6rem; margin: 0 0 8px; }
+p { margin: 0 0 16px; }
+.lead { color: var(--muted); font-size: 1.15rem; max-width: 640px; margin: 0 auto 28px; }
+a { color: var(--accent); }
+img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.hero { margin-top: 40px; }
+img[data-expand] { cursor: zoom-in; }
+img[data-expand]:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+#lightbox {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+}
+#lightbox::backdrop { background: rgba(0, 0, 0, 0.8); }
+#lightbox img {
+  width: auto;
+  max-width: 96vw;
+  max-height: 92vh;
+  cursor: zoom-out;
+}
+.button {
+  display: inline-block;
+  padding: 12px 28px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.button:hover { filter: brightness(1.1); }
+.button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+  pointer-events: none;
+}
+.mobile .bar { display: none; }
+.bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  transform: translateY(-100%);
+  visibility: hidden;
+  transition: transform 0.2s ease, visibility 0s linear 0.2s;
+}
+.bar.show {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.2s ease;
+}
+.bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 8px 16px;
+}
+.bar-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 12px; min-width: 0; }
+.bar strong { font-size: 1.05rem; white-space: nowrap; }
+.bar .button { white-space: nowrap; }
+.bar-title span { color: var(--muted); font-size: 0.9rem; }
+.bar .button { padding: 8px 20px; }
+@media (prefers-reduced-motion: reduce) {
+  .bar, .bar.show { transition: none; }
+}
+.note { color: var(--muted); font-size: 0.9rem; margin-top: 12px; }
+section { padding: 56px 0 0; }
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+.split p { color: var(--muted); }
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 20px;
+}
+.pair.single {
+  grid-template-columns: minmax(0, 480px);
+  justify-content: center;
+}
+.downloads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.downloads a {
+  display: block;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+}
+.downloads strong { display: block; color: var(--text); }
+.downloads span { color: var(--muted); font-size: 0.9rem; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 0; list-style: none; }
+footer { padding-top: 56px; padding-bottom: 48px; color: var(--muted); font-size: 0.9rem; }
+@media (max-width: 720px) {
+  .split, .pair { grid-template-columns: 1fr; }
+  .bar-title span { display: none; }
+  .bar-inner { padding: 8px 16px; gap: 12px; }
+  .bar .button { padding: 8px 14px; font-size: 0.95rem; }
+  header { padding-top: 40px; }
+}
+</style>
+</head>
+<body>
+<div class="bar" id="bar">
+  <div class="bar-inner">
+    <div class="bar-title">
+      <strong>UnderScript App</strong>
+      <span>The Undercards desktop app</span>
+    </div>
+    <a class="button download-button" href="https://github.com/UCProjects/UnderScript-App/releases/latest">Download</a>
+  </div>
+</div>
+<header>
+  <h1>UnderScript App</h1>
+  <p class="lead">Play <a href="https://undercards.net/">Undercards</a> with <a href="https://github.com/UCProjects/UnderScript">UnderScript</a> already built in. No browser extension or userscript manager to set up.</p>
+  <a class="button download-button" id="download" href="https://github.com/UCProjects/UnderScript-App/releases/latest">Download</a>
+  <p class="note" id="download-note">Windows, macOS and Linux</p>
+  <div class="hero">
+    <img src="images/menu.png" alt="UnderScript App showing the Undercards lobby with the UnderScript menu open" width="1080" height="900">
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="split">
+      <div>
+        <h2>Sign in once</h2>
+        <p>The first time, sign in as usual and tick "Remember me". The app keeps your password in your system's own credential store, and the next time the sign in page loads with your username and password already filled in.</p>
+      </div>
+      <img src="images/autofill.gif" alt="Signing in with Remember me ticked, signing out, and coming back to a sign in page that is already filled in" loading="lazy">
+    </div>
+  </section>
+
+  <section>
+    <h2>Updates</h2>
+    <p>The app downloads its own updates and installs them when you quit, and it brings in the latest UnderScript each time it starts. Plugins are different: nothing is updated until you update from "Pending Updates".</p>
+  </section>
+
+  <section>
+    <h2>Plugins with ease</h2>
+    <p>Open the UnderScript menu with Esc, choose "Community Plugins", and click Install. Before anything is installed, the app shows what the plugin can do, which sites it can reach, and where it runs.</p>
+    <div class="pair">
+      <img src="images/plugins.png" alt="The Community Plugins list" loading="lazy">
+      <img src="images/install-confirm.png" alt="The install window listing what a plugin can do and reach" loading="lazy">
+    </div>
+    <div class="pair single">
+      <img src="images/launcher.png" alt="The plugin manager shown when the app starts" loading="lazy">
+    </div>
+  </section>
+
+  <section>
+    <h2>Download</h2>
+    <div class="downloads">
+      <a href="https://github.com/UCProjects/UnderScript-App/releases/latest" data-platform="windows"><strong>Windows</strong><span>Installer (.exe)</span></a>
+      <a href="https://github.com/UCProjects/UnderScript-App/releases/latest" data-platform="mac"><strong>macOS</strong><span>Apple silicon (.dmg)</span></a>
+      <a href="https://github.com/UCProjects/UnderScript-App/releases/latest" data-platform="linux"><strong>Linux</strong><span>AppImage</span></a>
+    </div>
+    <p class="note">The builds are not code-signed, so Windows SmartScreen or macOS Gatekeeper may warn you the first time you open the app. You can approve it from the warning or from your system's security settings.</p>
+  </section>
+</main>
+
+<footer>
+  <ul class="links">
+    <li><a href="https://github.com/UCProjects/UnderScript-App#readme">README and shortcuts</a></li>
+    <li><a href="https://github.com/UCProjects/UnderScript-App/issues">Report a bug</a></li>
+    <li><a href="https://discord.gg/9KPj9XcMY9">Discord</a></li>
+    <li><a href="https://github.com/UCProjects/UnderScript-App/blob/master/changelog.md">Changelog</a></li>
+  </ul>
+  <p>UnderScript and this app are community projects, not made by the Undercards team.</p>
+</footer>
+
+<dialog id="lightbox" aria-label="Expanded image">
+  <img alt="">
+</dialog>
+
+<script>
+(() => {
+  const lightbox = document.getElementById('lightbox');
+  const expanded = lightbox.querySelector('img');
+  if (typeof lightbox.showModal === 'function') {
+    const open = (image) => {
+      expanded.src = image.currentSrc || image.src;
+      expanded.alt = image.alt;
+      lightbox.showModal();
+    };
+    document.querySelectorAll('header img, main img').forEach((image) => {
+      image.dataset.expand = '';
+      image.tabIndex = 0;
+      image.setAttribute('role', 'button');
+      image.setAttribute('aria-label', `Expand image: ${image.alt}`);
+      image.addEventListener('click', () => open(image));
+      image.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open(image);
+      });
+    });
+    lightbox.addEventListener('click', () => lightbox.close());
+  }
+
+  const platforms = {
+    windows: { label: 'Windows', pattern: /\.exe$/i },
+    mac: { label: 'macOS', pattern: /\.dmg$/i },
+    linux: { label: 'Linux', pattern: /\.AppImage$/i },
+  };
+
+  const hint = `${navigator.userAgentData?.platform ?? ''} ${navigator.userAgent}`;
+  const mobile = /android|iphone|ipad|ipod|mobile/i.test(hint) || (/mac/i.test(hint) && navigator.maxTouchPoints > 1);
+
+  const detect = () => {
+    if (mobile) return undefined;
+    if (/win/i.test(hint)) return 'windows';
+    if (/mac/i.test(hint)) return 'mac';
+    if (/linux|x11/i.test(hint)) return 'linux';
+    return undefined;
+  };
+
+  const apply = (assets) => {
+    const links = new Map(Object.entries(platforms).flatMap(([key, { pattern }]) => {
+      const asset = assets.find(({ name }) => pattern.test(name));
+      return asset ? [[key, asset.browser_download_url]] : [];
+    }));
+    document.querySelectorAll('[data-platform]').forEach((link) => {
+      const href = links.get(link.dataset.platform);
+      if (href) link.href = href;
+    });
+    const current = detect();
+    const href = links.get(current);
+    if (!href) return;
+    document.querySelectorAll('.download-button').forEach((button) => {
+      button.href = href;
+      button.textContent = `Download for ${platforms[current].label}`;
+    });
+    document.getElementById('download-note').textContent = 'Free and open source';
+  };
+
+  if (mobile) {
+    document.documentElement.classList.add('mobile');
+    const button = document.getElementById('download');
+    button.removeAttribute('href');
+    button.setAttribute('aria-disabled', 'true');
+    button.textContent = 'Desktop only';
+    document.getElementById('download-note').textContent = 'Open this page on a Windows, macOS or Linux computer to download.';
+  }
+
+  const bar = document.getElementById('bar');
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([entry]) => {
+      bar.classList.toggle('show', !entry.isIntersecting && entry.boundingClientRect.top < 0);
+    }).observe(document.getElementById('download'));
+  }
+
+  fetch('https://api.github.com/repos/UCProjects/UnderScript-App/releases/latest')
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.status))))
+    .then(({ assets }) => apply(assets ?? []))
+    .catch(() => {});
+})();
+</script>
+</body>
+</html>

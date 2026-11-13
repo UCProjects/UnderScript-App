@@ -40,6 +40,8 @@
     "nodeVersion": "current",
     "files": [
       "**/*",
+      "!docs",
+      "!scripts",
       "!test"
     ],
     "linux": {
