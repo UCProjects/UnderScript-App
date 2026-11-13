@@ -91,6 +91,52 @@ UnderScriptWrapper();`;
     assert.equal(vm.runInContext('typeof UnderScriptWrapper', sandbox), 'undefined');
   });
 
+  describe('on the Cloudflare challenge page', () => {
+    const run = (document, script = 'window.ran = true;') => {
+      const sandbox = sandboxWith(bridge().api, { document });
+      vm.runInContext(injectable(createBundle(meta([]), script), 'token-a'), sandbox);
+      return sandbox;
+    };
+
+    it('runs nothing when the page is already parsed', () => {
+      assert.equal(run({ readyState: 'complete', title: 'Just a moment...', addEventListener: () => {} }).ran, undefined);
+      assert.equal(run({ readyState: 'interactive', title: 'Just a moment...', addEventListener: () => {} }).ran, undefined);
+      assert.equal(run({ readyState: 'complete', title: 'Undercards', addEventListener: () => {} }).ran, true);
+    });
+
+    it('recognizes a translated challenge page by its challenge options, and leaves the sign-in widget alone', () => {
+      const challenge = { cType: 'interactive', cZone: 'undercards.net', cRay: 'a599cb5159f23462' };
+      const page = (title) => ({ readyState: 'complete', title, addEventListener: () => {} });
+      const withOptions = (options) => {
+        const sandbox = sandboxWith(bridge().api, { document: page('Un instant…'), _cf_chl_opt: options });
+        vm.runInContext(injectable(createBundle(meta([]), 'window.ran = true;'), 'token-a'), sandbox);
+        return sandbox.ran;
+      };
+      assert.equal(withOptions(challenge), undefined);
+      assert.equal(withOptions({ _eae3266e70ccc7333b6cc927: 'a', _19bbce45b087e34314475c56: 'b' }), true);
+      assert.equal(withOptions(undefined), true);
+    });
+
+    it('waits for the title before deciding while the page is still loading', () => {
+      const listeners = [];
+      const document = { readyState: 'loading', title: '', addEventListener: (type, listener) => listeners.push([type, listener]) };
+      const sandbox = run(document);
+      assert.equal(sandbox.ran, undefined);
+      assert.deepEqual(listeners.map(([type]) => type), ['readystatechange']);
+      document.readyState = 'interactive';
+      document.title = 'Just a moment...';
+      listeners[0][1]();
+      assert.equal(sandbox.ran, undefined);
+
+      const normal = { readyState: 'loading', title: '', addEventListener: (type, listener) => listeners.push([type, listener]) };
+      const other = run(normal);
+      normal.readyState = 'interactive';
+      normal.title = 'Undercards';
+      listeners.at(-1)[1]();
+      assert.equal(other.ran, true);
+    });
+  });
+
   it('does not expose the token in the functions it hands out', () => {
     const { api } = bridge();
     const sandbox = inject(api, 'window.text = [underscriptApp.getValues, underscriptApp.setValue].join();', 'secret-token');

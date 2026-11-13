@@ -69,10 +69,20 @@ export function injectable(bundle, token) {
     '    deleteValue: (id, key) => bridge.deleteValue(token, key),',
     '  });',
     '})();',
+    'const run = () => {',
+    `  if ((document.title || '').includes(${JSON.stringify(challengeTitle)}) || typeof window._cf_chl_opt?.cType === 'string') return;`,
     bundle,
+    '};',
+    "if (document.readyState === 'loading') {",
+    "  document.addEventListener('readystatechange', run, { once: true });",
+    '} else {',
+    '  run();',
+    '}',
     '})();',
   ].join('\n');
 }
+
+export const challengeTitle = 'Just a moment';
 
 const probeMeta = {
   name: 'probe',
