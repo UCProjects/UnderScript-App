@@ -115,6 +115,7 @@ img[data-expand]:focus-visible { outline: 3px solid var(--accent); outline-offse
   margin: 0 auto;
   padding: 8px 16px;
 }
+.bar-actions { display: flex; align-items: center; gap: 12px; }
 .bar-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 12px; min-width: 0; }
 .bar strong { font-size: 1.05rem; white-space: nowrap; }
 .bar .button { white-space: nowrap; }
@@ -158,7 +159,7 @@ section { padding: 56px 0 0; }
 }
 .downloads strong { display: block; color: var(--text); }
 .downloads span { color: var(--muted); font-size: 0.9rem; }
-.links { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 0; list-style: none; }
+.links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; padding: 0; list-style: none; }
 footer { padding-top: 56px; padding-bottom: 48px; color: var(--muted); font-size: 0.9rem; }
 @media (max-width: 720px) {
   .split, .pair { grid-template-columns: 1fr; }
@@ -166,6 +167,28 @@ footer { padding-top: 56px; padding-bottom: 48px; color: var(--muted); font-size
   .bar-inner { padding: 8px 16px; gap: 12px; }
   .bar .button { padding: 8px 14px; font-size: 0.95rem; }
   header { padding-top: 40px; }
+}
+.sponsor {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 4px;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.75;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sponsor svg { width: 20px; height: 20px; fill: #bf3989; }
+.sponsor:hover, .sponsor:focus-visible { background: rgba(128, 128, 128, 0.12); text-decoration: none; }
+@media (max-width: 599px) {
+  .sponsor span { display: none; }
+  .sponsor { padding: 4px 8px; }
 }
 </style>
 </head>
@@ -176,7 +199,10 @@ footer { padding-top: 56px; padding-bottom: 48px; color: var(--muted); font-size
       <strong>UnderScript App</strong>
       <span>The Undercards desktop app</span>
     </div>
-    <a class="button download-button" href="https://github.com/UCProjects/UnderScript-App/releases/latest">Download</a>
+    <div class="bar-actions">
+      <a class="sponsor" href="https://github.com/sponsors/feildmaster" target="_blank" rel="noopener noreferrer" title="Sponsor feildmaster"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/></svg><span>Sponsor</span></a>
+      <a class="button download-button" href="https://github.com/UCProjects/UnderScript-App/releases/latest">Download</a>
+    </div>
   </div>
 </div>
 <header>
@@ -234,6 +260,7 @@ footer { padding-top: 56px; padding-bottom: 48px; color: var(--muted); font-size
     <li><a href="https://github.com/UCProjects/UnderScript-App/issues">Report a bug</a></li>
     <li><a href="https://discord.gg/9KPj9XcMY9">Discord</a></li>
     <li><a href="https://github.com/UCProjects/UnderScript-App/blob/master/changelog.md">Changelog</a></li>
+    <li><a class="sponsor" href="https://github.com/sponsors/feildmaster" target="_blank" rel="noopener noreferrer" title="Sponsor feildmaster"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/></svg><span>Sponsor</span></a></li>
   </ul>
   <p>UnderScript and this app are community projects, not affiliated with Undercards.</p>
 </footer>
